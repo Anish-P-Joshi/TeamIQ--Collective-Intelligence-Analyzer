@@ -47,18 +47,23 @@ const Navbar = () => {
       <div className="container flex items-center justify-between px-4 sm:px-6 lg:px-8">
         <a 
           href="#" 
-          className="flex items-center space-x-2"
+          className="flex items-center space-x-3"
           onClick={(e) => {
             e.preventDefault();
             scrollToTop();
           }}
-          aria-label="Pulse Robot"
+          aria-label="Pulse AI"
         >
           <img 
             src="/logo.svg" 
-            alt="Pulse Robot Logo" 
+            alt="Pulse AI Logo" 
             className="h-7 sm:h-8" 
           />
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 uppercase tracking-wide">Powered By</span>
+            <span className="text-lg font-bold text-gray-900">Pulse AI</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">Our Very Own Collective Intelligence Agent</span>
+          </div>
         </a>
 
         {/* Desktop Navigation */}

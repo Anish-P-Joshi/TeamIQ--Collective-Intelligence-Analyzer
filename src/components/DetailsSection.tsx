@@ -130,7 +130,7 @@ const DetailsSection = () => {
             </div>
           </div>
 
-          {/* Right Card - Contact Form */}
+          {/* Right Card - Customization Form */}
           <div className="rounded-2xl sm:rounded-3xl overflow-hidden shadow-elegant">
             {/* Card Header with background image instead of gradient */}
             <div className="relative h-48 sm:h-64 p-6 sm:p-8 flex flex-col items-start" style={{
@@ -139,51 +139,64 @@ const DetailsSection = () => {
             backgroundPosition: "center"
           }}>
               <div className="inline-block px-4 sm:px-6 py-2 border border-white text-white rounded-full text-xs mb-4">
-                Request a demo
+                Personalized Setup
               </div>
               <h2 className="text-2xl sm:text-3xl font-display text-white font-bold mt-auto">
                 See it for yourself
               </h2>
             </div>
             
-            {/* Card Content - Form */}
+            {/* Card Content - Customization Form */}
             <div className="bg-white p-4 sm:p-8" style={{
             backgroundColor: "#FFFFFF",
             border: "1px solid #ECECEC"
           }}>
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-bold mb-2">
+                  Customize Your <span className="text-pulse-500">Team Intelligence</span> Analysis
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Tell us about your organization for personalized insights
+                </p>
+              </div>
+
+              <form className="space-y-4">
                 <div>
-                  <input 
-                    type="text" 
-                    name="fullName" 
-                    value={formData.fullName} 
-                    onChange={handleChange} 
-                    placeholder="Full name" 
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent" 
-                    required 
-                  />
-                </div>
-                
-                <div>
-                  <input 
-                    type="email" 
-                    name="email" 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    placeholder="Email address" 
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent" 
-                    required 
+                  <textarea
+                    placeholder="Describe your organization (e.g., Tech startup, Educational institution, Non-profit, etc.)"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm"
+                    rows={3}
+                    required
                   />
                 </div>
                 
                 <div>
                   <input 
                     type="text" 
-                    name="company" 
-                    value={formData.company} 
-                    onChange={handleChange} 
-                    placeholder="Company (optional)" 
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent" 
+                    placeholder="Meeting title (e.g., Weekly Strategy Session)" 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm" 
+                  />
+                </div>
+                
+                <div>
+                  <select 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm"
+                    required
+                  >
+                    <option value="">Select typical participation size</option>
+                    <option value="3-5">3-5 people</option>
+                    <option value="6-10">6-10 people</option>
+                    <option value="11-20">11-20 people</option>
+                    <option value="21-50">21-50 people</option>
+                    <option value="50+">50+ people</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <input 
+                    type="text" 
+                    placeholder="Keywords to monitor (e.g., innovation, budget, timeline)" 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm" 
                   />
                 </div>
                 
@@ -192,7 +205,7 @@ const DetailsSection = () => {
                     type="submit" 
                     className="w-full px-6 py-3 bg-pulse-500 hover:bg-pulse-600 text-white font-medium rounded-full transition-colors duration-300"
                   >
-                    Request access
+                    Customize for Organization
                   </button>
                 </div>
               </form>
