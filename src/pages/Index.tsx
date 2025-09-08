@@ -10,7 +10,8 @@ import Features from "@/components/Features";
 import Testimonials from "@/components/Testimonials";
 import Newsletter from "@/components/Newsletter";
 import MadeByHumans from "@/components/MadeByHumans";
-import Footer from "@/components/Footer";
+import CustomizationForm from "@/components/CustomizationForm";
+import ContactFooter from "@/components/ContactFooter";
 
 const Index = () => {
   // Initialize intersection observer to detect when elements enter viewport
@@ -69,10 +70,11 @@ const Index = () => {
         <ImageShowcaseSection />
         <Features />
         <Testimonials />
+        <CustomizationForm />
         <Newsletter />
         <MadeByHumans />
       </main>
-      <Footer />
+      <ContactFooter />
     </div>
   );
 };

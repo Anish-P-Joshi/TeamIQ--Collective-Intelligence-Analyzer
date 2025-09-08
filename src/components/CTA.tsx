@@ -44,21 +44,21 @@ const CTA = () => {
           </div>
           
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
-            Be Among the First to <br className="hidden sm:inline" />
-            <span className="text-pulse-500">Experience Atlas</span>
+            Ready to Transform <br className="hidden sm:inline" />
+            <span className="text-pulse-500">Your Team Meetings?</span>
           </h2>
           
           <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
-            We're accepting a limited number of early adopters. Submit your application today to secure your place in the future of robotics.
+            Get personalized AI insights for your organization. Customize the analysis for your specific needs and start optimizing your collective intelligence today.
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <a href="#contact" className="button-primary group flex items-center justify-center w-full sm:w-auto">
-              Request Early Access
+            <a href="#customize" className="button-primary group flex items-center justify-center w-full sm:w-auto">
+              Customize for Organization
               <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
             </a>
-            <a href="#" className="button-secondary w-full sm:w-auto text-center">
-              Join Waitlist
+            <a href="https://collective-intelligence-analyzer.lovable.app/" target="_blank" className="button-secondary w-full sm:w-auto text-center">
+              Try Live Demo
             </a>
           </div>
         </div>
