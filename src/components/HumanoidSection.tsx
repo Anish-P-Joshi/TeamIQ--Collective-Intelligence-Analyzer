@@ -206,9 +206,12 @@ const HumanoidSection = () => {
               
               <div className="relative z-10 p-5 sm:p-6 md:p-8 h-full flex items-center">
                 <div className="max-w-lg">
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-display text-white font-bold leading-tight mb-4">
-                    Like a Fitbit for <span className="text-white">collective intelligence</span>
-                  </h3>
+                   <h3 className="text-2xl sm:text-3xl md:text-4xl font-display text-white font-bold leading-tight mb-4">
+                     Like a Fitbit for <span className="text-white">collective intelligence</span>
+                   </h3>
+                   <p className="text-gray-200 leading-relaxed text-lg font-display">
+                     TeamIQ integrates seamlessly with your existing workflows using advanced data science algorithms. By analyzing communication patterns, engagement metrics, and decision-making processes, it provides real-time insights to optimize team performance and enhance collaborative intelligence.
+                   </p>
                 </div>
               </div>
             </div>

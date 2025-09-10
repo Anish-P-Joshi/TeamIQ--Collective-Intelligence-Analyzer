@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import teamAnalyticsDashboard from "@/assets/team-analytics-dashboard.jpg";
+import dataScienceAnimation from "@/assets/data-science-animation.jpg";
 
 const HumanIntuitionSection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -86,8 +86,8 @@ const HumanIntuitionSection = () => {
           <div className="relative opacity-0 fade-in-element">
             <div className="absolute inset-0 bg-gradient-to-r from-pulse-500/20 to-orange-500/20 rounded-2xl sm:rounded-3xl blur-2xl"></div>
             <img 
-              src={teamAnalyticsDashboard} 
-              alt="Team Analytics Dashboard" 
+              src={dataScienceAnimation} 
+              alt="Data Science Animation" 
               className="relative z-10 w-full h-auto rounded-2xl sm:rounded-3xl shadow-2xl"
             />
           </div>

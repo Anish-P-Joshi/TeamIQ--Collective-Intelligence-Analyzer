@@ -15,16 +15,9 @@ const MadeByHumans = () => {
             </span>
             </div>
             
-            <div style={{
-            overflow: "hidden",
-            maxHeight: "80px",
-            marginTop: "40px"
-          }}>
-              <h2 style={{
-              marginBottom: "-30px",
-              padding: "0px 0px 100px"
-            }} className="sm:text-5xl text-white mt-0 mx-0 font-light text-6xl md:text-7xl py-0 px-0 text-center lg:text-7xl flex items-center justify-center font-display">
-                Made For <span className="animate-text-change ml-4">Teams</span>
+            <div className="flex items-center justify-center" style={{ marginTop: "40px" }}>
+              <h2 className="text-white text-5xl md:text-6xl lg:text-7xl font-sleek font-light flex items-center">
+                Made For <span className="ml-4 animate-text-change min-w-[200px] text-center">Teams</span>
               </h2>
             </div>
             

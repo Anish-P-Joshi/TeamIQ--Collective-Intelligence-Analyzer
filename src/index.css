@@ -237,6 +237,12 @@
   animation: textChange 9s infinite;
   font-family: 'Inter', sans-serif;
   font-weight: 300;
+  display: inline-block;
+}
+
+.animate-text-change::before {
+  content: "Teams";
+  animation: text-content-cycle 9s infinite;
 }
 @keyframes text-content-cycle {
   0%, 14.28% { content: "Teams"; }
