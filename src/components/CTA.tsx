@@ -44,12 +44,12 @@ const CTA = () => {
           </div>
           
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 sm:mb-6">
-            Ready to Transform <br className="hidden sm:inline" />
-            <span className="text-pulse-500">Your Team Meetings?</span>
+            Calibrate Performance <br className="hidden sm:inline" />
+            <span className="text-pulse-500">Like Never Before</span>
           </h2>
           
           <p className="text-base sm:text-lg text-gray-600 mb-6 sm:mb-8 max-w-2xl mx-auto">
-            Get personalized AI insights for your organization. Customize the analysis for your specific needs and start optimizing your collective intelligence today.
+            Experience precision-engineered team intelligence analysis. Our AI-powered platform provides real-time insights into your team's collective decision-making processes, helping you optimize collaboration and achieve breakthrough results.
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-4">

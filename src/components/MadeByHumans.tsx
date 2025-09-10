@@ -23,7 +23,7 @@ const MadeByHumans = () => {
               <h2 style={{
               marginBottom: "-30px",
               padding: "0px 0px 100px"
-            }} className="sm:text-5xl text-white mt-0 mx-0 font-light text-6xl md:text-7xl py-0 px-0 text-center lg:text-7xl flex items-center justify-center font-sans">
+            }} className="sm:text-5xl text-white mt-0 mx-0 font-light text-6xl md:text-7xl py-0 px-0 text-center lg:text-7xl flex items-center justify-center font-display">
                 Made For <span className="animate-text-change ml-4">Teams</span>
               </h2>
             </div>

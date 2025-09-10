@@ -60,26 +60,24 @@ const Navbar = () => {
             className="h-7 sm:h-8" 
           />
           <div className="flex flex-col">
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Powered By</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">POWERED BY</span>
             <span className="text-lg font-bold text-gray-900">Pulse AI</span>
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Our Very Own Collective Intelligence Agent</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">OUR VERY OWN COLLECTIVE INTELLIGENCE AGENT</span>
           </div>
         </a>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex space-x-8">
           <a 
-            href="#" 
-            className="nav-link"
-            onClick={(e) => {
-              e.preventDefault();
-              scrollToTop();
-            }}
+            href="https://collective-intelligence-analyzer.lovable.app/" 
+            className="nav-link font-bold"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Home
           </a>
-          <a href="#features" className="nav-link">About</a>
-          <a href="#details" className="nav-link">Contact</a>
+          <a href="#features" className="nav-link font-bold">About</a>
+          <a href="#details" className="nav-link font-bold">Contact</a>
         </nav>
 
         {/* Mobile menu button - increased touch target */}
@@ -99,11 +97,11 @@ const Navbar = () => {
       )}>
         <nav className="flex flex-col space-y-8 items-center mt-8">
           <a 
-            href="#" 
-            className="text-xl font-medium py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100" 
-            onClick={(e) => {
-              e.preventDefault();
-              scrollToTop();
+            href="https://collective-intelligence-analyzer.lovable.app/" 
+            className="text-xl font-bold py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => {
               setIsMenuOpen(false);
               document.body.style.overflow = '';
             }}
@@ -112,7 +110,7 @@ const Navbar = () => {
           </a>
           <a 
             href="#features" 
-            className="text-xl font-medium py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100" 
+            className="text-xl font-bold py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100" 
             onClick={() => {
               setIsMenuOpen(false);
               document.body.style.overflow = '';
@@ -122,7 +120,7 @@ const Navbar = () => {
           </a>
           <a 
             href="#details" 
-            className="text-xl font-medium py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100" 
+            className="text-xl font-bold py-3 px-6 w-full text-center rounded-lg hover:bg-gray-100" 
             onClick={() => {
               setIsMenuOpen(false);
               document.body.style.overflow = '';

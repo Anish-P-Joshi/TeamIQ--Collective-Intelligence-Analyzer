@@ -223,33 +223,21 @@
 }
 
 /* Text changing animation with fade effect */
-@keyframes text-fade-cycle {
-  0%, 16% { 
-    opacity: 1; 
-    transform: translateY(0);
-  }
-  20%, 32% { 
-    opacity: 0; 
-    transform: translateY(-10px);
-  }
-  36%, 52% { 
-    opacity: 1; 
-    transform: translateY(0);
-  }
-  56%, 68% { 
-    opacity: 0; 
-    transform: translateY(-10px);
-  }
-  72%, 88% { 
-    opacity: 1; 
-    transform: translateY(0);
-  }
-  92%, 100% { 
-    opacity: 0; 
-    transform: translateY(-10px);
-  }
+@keyframes textChange {
+  0%, 16% { opacity: 1; transform: translateY(0); }
+  18%, 30% { opacity: 0; transform: translateY(-10px); }
+  32%, 48% { opacity: 1; transform: translateY(0); }
+  50%, 62% { opacity: 0; transform: translateY(-10px); }
+  64%, 80% { opacity: 1; transform: translateY(0); }
+  82%, 98% { opacity: 0; transform: translateY(-10px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
+.animate-text-change {
+  animation: textChange 9s infinite;
+  font-family: 'Inter', sans-serif;
+  font-weight: 300;
+}
 @keyframes text-content-cycle {
   0%, 14.28% { content: "Teams"; }
   14.29%, 28.57% { content: "Organizations"; }
@@ -260,13 +248,7 @@
   85.72%, 100% { content: "YOU"; }
 }
 
-.animate-text-change {
-  display: inline-block;
-  animation: text-fade-cycle 7s infinite;
-  transition: all 0.4s ease-in-out;
-}
-
 .animate-text-change::after {
   content: "Teams";
-  animation: text-content-cycle 7s infinite;
+  animation: text-content-cycle 9s infinite;
 }

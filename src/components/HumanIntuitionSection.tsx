@@ -1,43 +1,96 @@
-
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
+import teamAnalyticsDashboard from "@/assets/team-analytics-dashboard.jpg";
 
 const HumanIntuitionSection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const elements = entry.target.querySelectorAll(".fade-in-element");
+            elements.forEach((el, index) => {
+              setTimeout(() => {
+                el.classList.add("animate-fade-in");
+              }, index * 100);
+            });
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+    
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+    
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
 
   return (
-    <section className="py-12 bg-gray-50" id="human-intuition" ref={sectionRef}> {/* Reduced from py-20 */}
-      <div className="section-container opacity-0 animate-on-scroll">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="text-left">
-            <div className="pulse-chip mb-4">
-              <span>Human-Like Intuition</span>
+    <section className="py-12 sm:py-16 md:py-20 bg-white relative" id="human-intuition" ref={sectionRef}>
+      <div className="section-container">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Left content */}
+          <div className="space-y-6">
+            <div className="pulse-chip opacity-0 fade-in-element">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-pulse-500 text-white mr-2">03</span>
+              <span>Data Science</span>
             </div>
-            <h2 className="section-title mb-6">Beyond algorithms to true understanding</h2>
-            <p className="text-lg text-gray-700 mb-6">
-              Atlas goes beyond programmed responses to develop contextual awareness and
-              adaptive learning patterns that mirror human intuition. This enables natural
-              interactions that feel like working with a human colleague rather than a machine.
+            
+            <h2 className="section-title opacity-0 fade-in-element">
+              TeamIQ works with your team, not instead of it
+            </h2>
+            
+            <p className="section-subtitle opacity-0 fade-in-element">
+              By analyzing communication patterns, monitoring engagement levels, and identifying decision-making bottlenecks, TeamIQ helps teams focus on what they do best: collaborate, innovate, and solve complex problems together through the power of collective intelligence.
             </p>
-            <ul className="space-y-4">
-              {[
-                "Learns from human demonstrations and refines its approach over time",
-                "Anticipates needs based on situational awareness and past interactions",
-                "Adapts to changing environments without explicit reprogramming",
-                "Makes decisions with nuanced understanding of human preferences"
-              ].map((item, index) => (
-                <li key={index} className="flex items-start">
-                  <div className="mr-3 text-pulse-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                  </div>
-                  <span className="text-gray-700">{item}</span>
-                </li>
-              ))}
-            </ul>
+            
+            <div className="space-y-4 opacity-0 fade-in-element">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-pulse-500 flex items-center justify-center mt-1 flex-shrink-0">
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 5L5 9L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">Identifies communication patterns and participation imbalances</p>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-pulse-500 flex items-center justify-center mt-1 flex-shrink-0">
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 5L5 9L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">Tracks decision-making effectiveness and consensus building</p>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-pulse-500 flex items-center justify-center mt-1 flex-shrink-0">
+                  <svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 5L5 9L13 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="text-gray-600">Provides actionable insights to enhance team performance</p>
+              </div>
+            </div>
           </div>
-          {/* Image container div has been removed */}
+          
+          {/* Right image */}
+          <div className="relative opacity-0 fade-in-element">
+            <div className="absolute inset-0 bg-gradient-to-r from-pulse-500/20 to-orange-500/20 rounded-2xl sm:rounded-3xl blur-2xl"></div>
+            <img 
+              src={teamAnalyticsDashboard} 
+              alt="Team Analytics Dashboard" 
+              className="relative z-10 w-full h-auto rounded-2xl sm:rounded-3xl shadow-2xl"
+            />
+          </div>
         </div>
       </div>
     </section>
