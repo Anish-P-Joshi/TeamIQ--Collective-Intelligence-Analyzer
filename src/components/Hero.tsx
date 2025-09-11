@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ArrowRight } from "lucide-react";
 import LottieAnimation from "./LottieAnimation";
+import teamCollaborationAnimation from "@/assets/team-collaboration-animation.jpg";
 
 const Hero = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -152,7 +153,7 @@ const Hero = () => {
             {lottieData ? (
               <div className="relative z-10 animate-fade-in" style={{ animationDelay: "0.9s" }}>
                 <img 
-                  src="/src/assets/team-collaboration-animation.jpg" 
+                  src={teamCollaborationAnimation} 
                   alt="Team Collaboration Animation" 
                   className="w-full h-auto max-w-lg mx-auto rounded-2xl shadow-2xl"
                 />
