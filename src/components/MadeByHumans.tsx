@@ -15,9 +15,9 @@ const MadeByHumans = () => {
             </span>
             </div>
             
-            <div className="flex items-center justify-center" style={{ marginTop: "40px" }}>
-              <h2 className="text-white text-5xl md:text-6xl lg:text-7xl font-sleek font-light flex items-center">
-                Made For <span className="ml-4 animate-text-change min-w-[200px] text-center">Teams</span>
+            <div className="flex items-center justify-center h-full" style={{ marginTop: "40px" }}>
+              <h2 className="text-white text-5xl md:text-6xl lg:text-7xl font-display font-light flex items-center justify-center">
+                Made For <span className="ml-4 animate-text-change min-w-[200px] text-center font-display">Teams</span>
               </h2>
             </div>
             
