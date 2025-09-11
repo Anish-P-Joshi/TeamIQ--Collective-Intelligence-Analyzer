@@ -234,43 +234,37 @@
 }
 
 .animate-text-change {
-  font-family: 'Inter', sans-serif;
   font-weight: 300;
-  display: inline-block;
   position: relative;
+  display: inline-block;
+}
+
+.animate-text-change::before {
+  content: "Teams";
+  opacity: 1;
 }
 
 .animate-text-change::after {
   content: "Teams";
-  animation: text-content-cycle 9s infinite;
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
+  width: 100%;
+  animation: text-content-cycle 6s infinite;
   opacity: 1;
-  transition: opacity 0.3s ease-in-out;
 }
 
 @keyframes text-content-cycle {
-  0%, 30% { 
+  0%, 33% { 
     content: "Teams"; 
     opacity: 1;
   }
-  32%, 34% { 
-    opacity: 0; 
-  }
-  36%, 64% { 
+  33.1%, 66% { 
     content: "Innovation"; 
     opacity: 1;
   }
-  66%, 68% { 
-    opacity: 0; 
-  }
-  70%, 98% { 
+  66.1%, 100% { 
     content: "Success"; 
     opacity: 1;
-  }
-  100% { 
-    opacity: 1; 
   }
 }
