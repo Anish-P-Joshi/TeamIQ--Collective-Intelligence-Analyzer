@@ -8,7 +8,6 @@ import Features from "@/components/Features";
 import HumanIntuitionSection from "@/components/HumanIntuitionSection";
 import Newsletter from "@/components/Newsletter";
 import MadeByHumans from "@/components/MadeByHumans";
-import CustomizationForm from "@/components/CustomizationForm";
 import ContactFooter from "@/components/ContactFooter";
 
 const Index = () => {
@@ -68,7 +67,6 @@ const Index = () => {
         <DetailsSection />
         <Features />
         
-        <CustomizationForm />
         <Newsletter />
         <MadeByHumans />
       </main>

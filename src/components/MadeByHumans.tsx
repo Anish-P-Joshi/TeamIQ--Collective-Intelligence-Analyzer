@@ -10,9 +10,12 @@ const MadeByHumans = () => {
           backgroundImage: "url('/background-section3.png')"
         }}>
             <div className="flex items-center text-white">
-              <img src="/logo.svg" alt="Pulse Robot Logo" className="h-5 sm:h-6 w-auto mr-3 invert" />
-              <span className="text-white text-xl font-medium">
-            </span>
+              <img src="/logo.svg" alt="TeamIQ Logo" className="h-5 sm:h-6 w-auto mr-3 invert" />
+              <span className="text-white text-sm sm:text-base font-light" style={{ fontFamily: 'Inter, sans-serif' }}>
+                POWERED BY<br/>
+                <span className="font-medium">Pulse AI</span><br/>
+                <span className="text-xs">OUR VERY OWN COLLECTIVE INTELLIGENCE AGENT</span>
+              </span>
             </div>
             
             <div className="absolute inset-0 flex items-center justify-center">
