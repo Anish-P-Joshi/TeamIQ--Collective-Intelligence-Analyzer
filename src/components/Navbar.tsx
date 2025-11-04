@@ -44,25 +44,11 @@ const Navbar = () => {
       )}
     >
       <div className="container flex items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a 
-          href="#" 
-          className="flex items-center space-x-3"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToTop();
-          }}
-          aria-label="TeamIQ"
-        >
-          <img 
-            src="/logo.svg" 
-            alt="TeamIQ Logo" 
-            className="h-7 sm:h-8" 
-          />
-          <span className="text-lg font-bold text-gray-900">TeamIQ</span>
-        </a>
+
+        {/* Brand section removed */}
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-8">
+        <nav className="hidden md:flex space-x-8 ml-auto">
           <a 
             href="https://collective-intelligence-analyzer.lovable.app/" 
             className="nav-link font-bold"
@@ -77,7 +63,7 @@ const Navbar = () => {
 
         {/* Mobile menu button - increased touch target */}
         <button 
-          className="md:hidden text-gray-700 p-3 focus:outline-none" 
+          className="md:hidden text-gray-700 p-3 focus:outline-none ml-auto" 
           onClick={toggleMenu}
           aria-label={isMenuOpen ? "Close menu" : "Open menu"}
         >
