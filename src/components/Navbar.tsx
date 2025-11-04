@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
@@ -52,18 +51,24 @@ const Navbar = () => {
             e.preventDefault();
             scrollToTop();
           }}
-         <a 
-  href="#"
-  className="flex items-center space-x-3"
-  onClick={(e) => {
-    e.preventDefault();
-    scrollToTop();
-  }}
-  aria-label="TeamIQ"
->
-  <span className="text-2xl font-extrabold text-gray-900">TeamIQ</span>
-</a>
-        
+          aria-label="TeamIQ"
+        >
+          <img 
+            src="/logo.svg" 
+            alt="TeamIQ Logo" 
+            className="h-7 sm:h-8" 
+          />
+          <span className="text-lg font-bold text-gray-900">TeamIQ</span>
+        </a>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex space-x-8">
+          <a 
+            href="https://collective-intelligence-analyzer.lovable.app/" 
+            className="nav-link font-bold"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Home
           </a>
           <a href="#features" className="nav-link font-bold">About</a>
