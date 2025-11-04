@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { ArrowRight, Users, Target, Hash, MessageSquare } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 const CustomizationForm = () => {
   const [formData, setFormData] = useState({
@@ -13,23 +15,48 @@ const CustomizationForm = () => {
   
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitted(true);
     
-    // Simulate form processing
-    setTimeout(() => {
-      // Redirect to the main app with customization parameters
-      const params = new URLSearchParams({
-        org: formData.organization,
-        meeting: formData.meetingTitle || 'Team Collaboration Session',
-        agenda: formData.agenda || 'Strategic planning and decision-making session',
-        size: formData.participantSize,
-        keywords: formData.keywords
+    try {
+      // Call the edge function to generate custom simulation
+      const { data, error } = await supabase.functions.invoke('analytics-simulate', {
+        body: {
+          organization: formData.organization,
+          meetingTitle: formData.meetingTitle || 'Team Collaboration Session',
+          participantSize: formData.participantSize,
+          keywords: formData.keywords
+        }
       });
-      
-      window.open(`https://collective-intelligence-analyzer.lovable.app/?${params.toString()}`, '_blank');
-    }, 2000);
+
+      if (error) {
+        console.error('Error calling analytics-simulate:', error);
+        toast({
+          title: "Error",
+          description: "Failed to generate simulation. Please try again.",
+          variant: "destructive"
+        });
+        setIsSubmitted(false);
+        return;
+      }
+
+      if (data?.demoUrl) {
+        // Redirect to the customized simulation
+        setTimeout(() => {
+          window.open(data.demoUrl, '_blank');
+          setIsSubmitted(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+      setIsSubmitted(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
