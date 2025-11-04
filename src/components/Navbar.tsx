@@ -17,17 +17,11 @@ const Navbar = () => {
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
-    // Prevent background scrolling when menu is open
     document.body.style.overflow = !isMenuOpen ? 'hidden' : '';
   };
 
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-    
-    // Close mobile menu if open
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     if (isMenuOpen) {
       setIsMenuOpen(false);
       document.body.style.overflow = '';
@@ -45,10 +39,23 @@ const Navbar = () => {
     >
       <div className="container flex items-center justify-between px-4 sm:px-6 lg:px-8">
 
-        {/* Brand section removed */}
+        {/* TeamIQ Text Logo */}
+        <a 
+          href="#" 
+          className="flex items-center space-x-3"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToTop();
+          }}
+          aria-label="TeamIQ"
+        >
+          <span className="text-2xl sm:text-3xl font-extrabold tracking-tight text-gray-900 font-sans">
+            TeamIQ
+          </span>
+        </a>
 
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-8 ml-auto">
+        <nav className="hidden md:flex space-x-8">
           <a 
             href="https://collective-intelligence-analyzer.lovable.app/" 
             className="nav-link font-bold"
@@ -61,9 +68,9 @@ const Navbar = () => {
           <a href="#contact-footer" className="nav-link font-bold">Contact</a>
         </nav>
 
-        {/* Mobile menu button - increased touch target */}
+        {/* Mobile menu button */}
         <button 
-          className="md:hidden text-gray-700 p-3 focus:outline-none ml-auto" 
+          className="md:hidden text-gray-700 p-3 focus:outline-none" 
           onClick={toggleMenu}
           aria-label={isMenuOpen ? "Close menu" : "Open menu"}
         >
@@ -71,7 +78,7 @@ const Navbar = () => {
         </button>
       </div>
 
-      {/* Mobile Navigation - improved for better touch experience */}
+      {/* Mobile Navigation */}
       <div className={cn(
         "fixed inset-0 z-40 bg-white flex flex-col pt-16 px-6 md:hidden transition-all duration-300 ease-in-out",
         isMenuOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-full pointer-events-none"
