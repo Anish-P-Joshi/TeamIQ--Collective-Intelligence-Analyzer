@@ -7,7 +7,6 @@ import DetailsSection from "@/components/DetailsSection";
 import Features from "@/components/Features";
 import HumanIntuitionSection from "@/components/HumanIntuitionSection";
 import Newsletter from "@/components/Newsletter";
-import MadeByHumans from "@/components/MadeByHumans";
 import ContactFooter from "@/components/ContactFooter";
 
 const Index = () => {
@@ -68,7 +67,6 @@ const Index = () => {
         <Features />
         
         <Newsletter />
-        <MadeByHumans />
       </main>
       <ContactFooter />
     </div>

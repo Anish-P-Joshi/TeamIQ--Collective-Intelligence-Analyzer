@@ -157,42 +157,38 @@ const DetailsSection = () => {
                 </p>
               </div>
 
-              <form className="space-y-4">
-                <div>
-                  <textarea
-                    placeholder="Describe your organization (e.g., Tech startup, Educational institution, Non-profit, etc.)"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm"
-                    rows={3}
-                    required
-                  />
-                </div>
-                
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <input 
                     type="text" 
-                    placeholder="Meeting title (e.g., Weekly Strategy Session)" 
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleChange}
+                    placeholder="Full Name *" 
                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm" 
+                    required
                   />
                 </div>
                 
                 <div>
-                  <select 
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm"
+                  <input 
+                    type="email" 
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="Email Address *" 
+                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm" 
                     required
-                  >
-                    <option value="">Select typical participation size</option>
-                    <option value="3-5">3-5 people</option>
-                    <option value="6-10">6-10 people</option>
-                    <option value="11-20">11-20 people</option>
-                    <option value="21-50">21-50 people</option>
-                    <option value="50+">50+ people</option>
-                  </select>
+                  />
                 </div>
                 
                 <div>
                   <input 
                     type="text" 
-                    placeholder="Keywords to monitor (e.g., innovation, budget, timeline)" 
+                    name="company"
+                    value={formData.company}
+                    onChange={handleChange}
+                    placeholder="Company Name (optional)" 
                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-pulse-500 focus:border-transparent text-sm" 
                   />
                 </div>
@@ -202,7 +198,7 @@ const DetailsSection = () => {
                     type="submit" 
                     className="w-full px-6 py-3 bg-pulse-500 hover:bg-pulse-600 text-white font-medium rounded-full transition-colors duration-300"
                   >
-                    Customize for Organization
+                    Request Early Access
                   </button>
                 </div>
               </form>

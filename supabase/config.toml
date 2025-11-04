@@ -1,0 +1,4 @@
+project_id = "fdvmhosrsefblmnjrdkd"
+
+[functions.analytics-simulate]
+verify_jwt = false

@@ -59,11 +59,7 @@ const Navbar = () => {
             alt="Pulse AI Logo" 
             className="h-7 sm:h-8" 
           />
-          <div className="flex flex-col">
-            <span className="text-xs text-gray-500 uppercase tracking-wide">POWERED BY</span>
-            <span className="text-lg font-bold text-gray-900">Pulse AI</span>
-            <span className="text-xs text-gray-500 uppercase tracking-wide">OUR VERY OWN COLLECTIVE INTELLIGENCE AGENT</span>
-          </div>
+          <span className="text-lg font-bold text-gray-900">TeamIQ</span>
         </a>
 
         {/* Desktop Navigation */}
