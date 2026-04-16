@@ -53,8 +53,8 @@ const MeetingAnalysis = () => {
   const [showAnalytics, setShowAnalytics] = useState(true);
   const [scoreHistory, setScoreHistory] = useState<{ time: number; score: number; consensus: number }[]>([]);
   const lastAnalyzedRef = useRef('');
-  const timerRef = useRef<NodeJS.Timeout>();
-  const analysisIntervalRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const analysisIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
   // Meeting timer
   useEffect(() => {
