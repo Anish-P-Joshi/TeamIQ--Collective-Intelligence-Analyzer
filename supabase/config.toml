@@ -2,3 +2,6 @@ project_id = "fdvmhosrsefblmnjrdkd"
 
 [functions.analytics-simulate]
 verify_jwt = false
+
+[functions.analyze-meeting]
+verify_jwt = false
