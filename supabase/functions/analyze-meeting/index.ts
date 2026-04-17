@@ -29,25 +29,31 @@ Meeting: ${meetingTitle || 'Team Meeting'}
 Participants: ${participants?.join(', ') || 'Unknown'}
 Meeting duration so far: ${Math.floor((meetingTimeSeconds || 0) / 60)} minutes
 
+The transcript is formatted as "SpeakerName: utterance" lines. Use that to attribute talk time and ideas per participant.
+
 You MUST respond with a JSON object using this exact structure (no markdown, no code blocks, just raw JSON):
 {
-  "intelligenceScore": <number 1-10, based on quality of discussion, diversity of ideas, constructiveness>,
-  "participationBalance": <number 0-100, how evenly distributed the conversation is>,
-  "ideaDiversity": <number 0-100, variety of unique perspectives and ideas>,
-  "currentTopics": [<string array of 3-5 current discussion topics>],
-  "aiInsights": [
-    {"text": "<insight text>", "type": "warning|info|positive", "priority": <1-3>}
-  ],
-  "keyDecisions": [<string array of any decisions made>],
-  "actionItems": [<string array of any action items identified>],
+  "intelligenceScore": <number 1-10>,
+  "participationBalance": <number 0-100>,
+  "ideaDiversity": <number 0-100>,
+  "currentTopics": [<3-5 strings>],
+  "currentSpeaker": "<name of the most recent speaker>",
+  "aiInsights": [{"text": "<insight>", "type": "warning|info|positive", "priority": <1-3>}],
+  "keyDecisions": [<strings>],
+  "actionItems": [<strings>],
   "sentimentOverall": "<positive|neutral|negative|mixed>",
   "engagementLevel": "<high|medium|low>",
-  "suggestedQuestions": [<string array of 2-3 questions to deepen discussion>],
-  "participantInsights": [
-    {"name": "<participant name or Speaker>", "talkTimePercent": <number>, "ideas": <number>, "sentiment": "<positive|neutral|negative>"}
-  ],
-  "convergenceScore": <number 0-100, how much the group is converging on consensus>,
-  "noveltyScore": <number 0-100, how novel/creative the ideas are>
+  "suggestedQuestions": [<2-3 strings>],
+  "participantInsights": [{"name": "<name>", "talkTimePercent": <number>, "ideas": <number>, "sentiment": "<positive|neutral|negative>"}],
+  "convergenceScore": <number 0-100>,
+  "noveltyScore": <number 0-100>,
+  "perspectiveRange": <number 0-100>,
+  "balanceScore": <number 0-1, decimal>,
+  "dominantVoices": <integer count>,
+  "silentMembers": <integer count>,
+  "interactions": [{"from": "<name>", "to": "<name>", "weight": <number 1-10>}],
+  "convergenceTimeline": [{"minute": <number>, "consensus": <0-100>, "ideas": <0-100>, "conflicts": <0-100>}],
+  "qualityScore": <number 0-100>
 }`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -96,6 +102,7 @@ You MUST respond with a JSON object using this exact structure (no markdown, no 
         participationBalance: 70,
         ideaDiversity: 65,
         currentTopics: ["Discussion in progress"],
+        currentSpeaker: "",
         aiInsights: [{ text: "Analysis in progress - gathering more data", type: "info", priority: 2 }],
         keyDecisions: [],
         actionItems: [],
@@ -104,7 +111,14 @@ You MUST respond with a JSON object using this exact structure (no markdown, no 
         suggestedQuestions: [],
         participantInsights: [],
         convergenceScore: 50,
-        noveltyScore: 50
+        noveltyScore: 50,
+        perspectiveRange: 50,
+        balanceScore: 0.5,
+        dominantVoices: 0,
+        silentMembers: 0,
+        interactions: [],
+        convergenceTimeline: [],
+        qualityScore: 50,
       };
     }
 
