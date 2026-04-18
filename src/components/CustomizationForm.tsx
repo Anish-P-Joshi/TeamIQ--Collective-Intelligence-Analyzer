@@ -127,21 +127,7 @@ const CustomizationForm = () => {
                 />
               </div>
 
-              {/* Participant Names */}
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 mr-2 text-pulse-500" />
-                  Participant Names
-                </label>
-                <input
-                  type="text"
-                  name="participantNames"
-                  value={formData.participantNames}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Alice, Bob, Charlie (comma-separated)"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pulse-500 focus:border-transparent"
-                />
-              </div>
+              {/* (participants are auto-detected when they join the room) */}
 
               {/* Keywords */}
               <div className="md:col-span-2">
