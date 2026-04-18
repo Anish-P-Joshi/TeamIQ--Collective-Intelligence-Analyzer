@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Users, Target, Hash, MessageSquare, Link } from "lucide-react";
+import { ArrowRight, Users, Target, Hash, User, Video } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const CustomizationForm = () => {
@@ -8,27 +8,31 @@ const CustomizationForm = () => {
   const [formData, setFormData] = useState({
     organization: '',
     meetingTitle: '',
-    agenda: '',
-    participantSize: '',
     keywords: '',
-    additionalInfo: '',
-    meetLink: '',
-    participantNames: '',
+    yourName: '',
+    roomName: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.organization) {
       toast({ title: "Required", description: "Please describe your organization.", variant: "destructive" });
       return;
     }
+    if (!formData.yourName.trim()) {
+      toast({ title: "Required", description: "Please enter your name to join the call.", variant: "destructive" });
+      return;
+    }
+
+    const room = (formData.roomName || `teamiq-${Math.random().toString(36).slice(2, 8)}`)
+      .toLowerCase().replace(/[^a-z0-9-]/g, '-');
 
     const params = new URLSearchParams({
       org: formData.organization,
       title: formData.meetingTitle || 'Team Meeting',
-      ...(formData.meetLink && { meetLink: formData.meetLink }),
-      ...(formData.participantNames && { participants: formData.participantNames }),
+      room,
+      name: formData.yourName.trim(),
     });
 
     navigate(`/meeting-analysis?${params.toString()}`);
@@ -56,23 +60,38 @@ const CustomizationForm = () => {
 
           <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-8 shadow-lg">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Google Meet Link */}
-              <div className="md:col-span-2">
+              {/* Your Name */}
+              <div>
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Link className="w-4 h-4 mr-2 text-pulse-500" />
-                  Google Meet Link (paste your pre-scheduled link)
+                  <User className="w-4 h-4 mr-2 text-pulse-500" />
+                  Your Name *
                 </label>
                 <input
-                  type="url"
-                  name="meetLink"
-                  value={formData.meetLink}
+                  type="text"
+                  name="yourName"
+                  value={formData.yourName}
                   onChange={handleInputChange}
-                  placeholder="https://meet.google.com/abc-defg-hij"
+                  required
+                  placeholder="e.g., Alex Johnson"
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pulse-500 focus:border-transparent"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  The meet link will open in a new tab alongside your analysis dashboard
-                </p>
+              </div>
+
+              {/* Room Name */}
+              <div>
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <Video className="w-4 h-4 mr-2 text-pulse-500" />
+                  Room Name (optional)
+                </label>
+                <input
+                  type="text"
+                  name="roomName"
+                  value={formData.roomName}
+                  onChange={handleInputChange}
+                  placeholder="Leave blank to auto-generate"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pulse-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Share the same name with teammates so they join the same room.</p>
               </div>
 
               {/* Organization */}
@@ -108,21 +127,7 @@ const CustomizationForm = () => {
                 />
               </div>
 
-              {/* Participant Names */}
-              <div>
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Users className="w-4 h-4 mr-2 text-pulse-500" />
-                  Participant Names
-                </label>
-                <input
-                  type="text"
-                  name="participantNames"
-                  value={formData.participantNames}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Alice, Bob, Charlie (comma-separated)"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pulse-500 focus:border-transparent"
-                />
-              </div>
+              {/* (participants are auto-detected when they join the room) */}
 
               {/* Keywords */}
               <div className="md:col-span-2">
