@@ -23,17 +23,18 @@ export const VideoTile: React.FC<VideoTileProps> = ({ participant, isLocal, colo
 
     const attachTracks = () => {
       // Video
-      const videoPubs = Array.from(participant.videoTrackPublications.values()) as Array<{ kind: Track.Kind; track?: any }>;
-      const videoPub = videoPubs.find(p => p.kind === Track.Kind.Video);
-      const videoTrack = videoPub?.track;
-      if (videoTrack && videoEl) {
-        videoTrack.attach(videoEl);
-      }
+      let videoTrack: any = null;
+      participant.videoTrackPublications.forEach((pub: any) => {
+        if (!videoTrack && pub.kind === Track.Kind.Video) videoTrack = pub.track;
+      });
+      if (videoTrack && videoEl) videoTrack.attach(videoEl);
+
       // Audio (only for remote — local mic shouldn't loop back)
       if (!isLocal && audioEl) {
-        const audioPubs = Array.from(participant.audioTrackPublications.values()) as Array<{ kind: Track.Kind; track?: any }>;
-        const audioPub = audioPubs.find(p => p.kind === Track.Kind.Audio);
-        const audioTrack = audioPub?.track;
+        let audioTrack: any = null;
+        participant.audioTrackPublications.forEach((pub: any) => {
+          if (!audioTrack && pub.kind === Track.Kind.Audio) audioTrack = pub.track;
+        });
         if (audioTrack) audioTrack.attach(audioEl);
       }
     };
