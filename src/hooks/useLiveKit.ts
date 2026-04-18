@@ -74,12 +74,18 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
       });
     }
     room.remoteParticipants.forEach(p => {
+      let audioMuted = true;
+      let videoMuted = true;
+      p.audioTrackPublications.forEach((pub: any) => { if (!pub.isMuted) audioMuted = false; });
+      p.videoTrackPublications.forEach((pub: any) => { if (!pub.isMuted) videoMuted = false; });
+      if (p.audioTrackPublications.size === 0) audioMuted = true;
+      if (p.videoTrackPublications.size === 0) videoMuted = true;
       list.push({
         identity: p.identity,
         name: p.name || p.identity,
         isLocal: false,
-        audioMuted: !p.audioTrackPublications.size || Array.from(p.audioTrackPublications.values()).every(t => t.isMuted),
-        videoMuted: !p.videoTrackPublications.size || Array.from(p.videoTrackPublications.values()).every(t => t.isMuted),
+        audioMuted,
+        videoMuted,
         isSpeaking: p.isSpeaking,
         audioLevel: p.audioLevel,
         mutedSince: null,
