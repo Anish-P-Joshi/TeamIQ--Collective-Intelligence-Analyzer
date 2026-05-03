@@ -136,7 +136,91 @@ const MeetingAnalysis = () => {
     return () => clearInterval(id);
   }, [participants]);
 
-  // AI analysis — use real transcript
+  // Live, client-side derived stats from real entries+participants — works without AI.
+  const liveStats = useMemo(() => {
+    const wordsByIdentity = new Map<string, { name: string; words: number; ideas: number }>();
+    participants.forEach(p => wordsByIdentity.set(p.identity, { name: p.name, words: 0, ideas: 0 }));
+    entries.forEach(e => {
+      const key = e.identity;
+      const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
+      existing.words += e.text.split(/\s+/).filter(Boolean).length;
+      // crude "idea" = utterance >= 6 words
+      if (e.text.split(/\s+/).filter(Boolean).length >= 6) existing.ideas += 1;
+      existing.name = e.speaker || existing.name;
+      wordsByIdentity.set(key, existing);
+    });
+    const totalWords = Array.from(wordsByIdentity.values()).reduce((s, v) => s + v.words, 0) || 1;
+    const insights = Array.from(wordsByIdentity.values()).map(v => ({
+      name: v.name,
+      talkTimePercent: Math.round((v.words / totalWords) * 100),
+      ideas: v.ideas,
+      sentiment: 'neutral' as const,
+    }));
+
+    // Participation balance: 100 = perfectly even, 0 = one person dominates
+    const n = insights.length || 1;
+    const ideal = 100 / n;
+    const variance = insights.reduce((s, p) => s + Math.pow(p.talkTimePercent - ideal, 2), 0) / n;
+    const balancePct = Math.max(0, Math.round(100 - Math.sqrt(variance) * 1.5));
+    const dominant = insights.filter(p => p.talkTimePercent > ideal * 1.7).length;
+    const silent = insights.filter(p => p.talkTimePercent < ideal * 0.3).length;
+
+    // Pairwise interactions: consecutive speaker A -> B
+    const interactionMap = new Map<string, number>();
+    for (let i = 1; i < entries.length; i++) {
+      const from = entries[i - 1].speaker;
+      const to = entries[i].speaker;
+      if (!from || !to || from === to) continue;
+      const key = `${from}|${to}`;
+      interactionMap.set(key, (interactionMap.get(key) || 0) + 1);
+    }
+    const interactions = Array.from(interactionMap.entries()).map(([k, weight]) => {
+      const [from, to] = k.split('|');
+      return { from, to, weight: Math.min(10, weight) };
+    });
+
+    // Convergence timeline: bucket entries per minute
+    const buckets = new Map<number, number>();
+    entries.forEach(e => {
+      const minute = Math.floor((e.timestamp - (entries[0]?.timestamp || e.timestamp)) / 60000);
+      buckets.set(minute, (buckets.get(minute) || 0) + 1);
+    });
+    const maxBucket = Math.max(1, ...Array.from(buckets.values()));
+    const timeline = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([m, c]) => ({
+      minute: m,
+      ideas: Math.round((c / maxBucket) * 100),
+      consensus: Math.min(100, balancePct + m * 2),
+      conflicts: Math.max(0, 30 - m * 3),
+    }));
+
+    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 25 + Math.min(40, totalWords / 20));
+    const intelligenceScore = Math.min(10, Math.max(1, (balancePct / 12) + (insights.length * 0.8) + Math.min(3, totalWords / 100)));
+    const noveltyScore = Math.min(100, Math.round(insights.reduce((s, p) => s + p.ideas, 0) * 8));
+    const convergenceScore = Math.min(100, balancePct);
+    const perspectiveRange = Math.min(100, insights.length * 20 + Math.min(20, totalWords / 30));
+    const qualityScore = Math.round((balancePct + ideaDiversity) / 2);
+
+    return {
+      participantInsights: insights,
+      participationBalance: balancePct,
+      ideaDiversity: Math.round(ideaDiversity),
+      intelligenceScore: Number(intelligenceScore.toFixed(1)),
+      noveltyScore,
+      convergenceScore,
+      perspectiveRange,
+      qualityScore,
+      balanceScore: Math.round((balancePct / 100) * 100) / 100,
+      dominantVoices: dominant,
+      silentMembers: silent + participants.filter(p => p.audioMuted).length,
+      interactions,
+      convergenceTimeline: timeline,
+      avgResponseSeconds: entries.length > 1
+        ? ((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000 / Math.max(1, entries.length - 1)).toFixed(1)
+        : '0.0',
+    };
+  }, [entries, participants]);
+
+  // AI analysis — supplements live stats with qualitative insights
   const runAnalysis = useCallback(async () => {
     if (!transcript || transcript === lastAnalyzedRef.current || isAnalyzing) return;
     lastAnalyzedRef.current = transcript;
@@ -158,14 +242,13 @@ const MeetingAnalysis = () => {
       });
       if (error) { console.error('Analysis error:', error); return; }
       if (data?.analysis) {
-        // Merge mute warnings into AI insights
         const warnings = muteWarnings.map(w => ({
           text: `${w.name} has been muted for ${Math.floor(w.seconds / 60)}m ${w.seconds % 60}s — they may have something to share.`,
           type: 'warning',
           priority: 2,
         }));
         const merged = [...warnings, ...(data.analysis.aiInsights || [])].slice(0, 6);
-        setAnalysis({ ...data.analysis, aiInsights: merged });
+        setAnalysis(prev => ({ ...prev, ...data.analysis, aiInsights: merged }));
       }
     } catch (e) {
       console.error('Analysis failed:', e);
@@ -174,10 +257,30 @@ const MeetingAnalysis = () => {
     }
   }, [transcript, participants, org, title, meetingTime, isAnalyzing, muteWarnings]);
 
+  // Merge live stats into analysis on every change so visuals always update
+  useEffect(() => {
+    setAnalysis(prev => ({
+      ...prev,
+      participantInsights: liveStats.participantInsights.length > 0 ? liveStats.participantInsights : prev.participantInsights,
+      participationBalance: liveStats.participationBalance,
+      ideaDiversity: liveStats.ideaDiversity,
+      intelligenceScore: liveStats.intelligenceScore,
+      noveltyScore: liveStats.noveltyScore,
+      convergenceScore: liveStats.convergenceScore,
+      perspectiveRange: liveStats.perspectiveRange,
+      qualityScore: liveStats.qualityScore,
+      balanceScore: liveStats.balanceScore,
+      dominantVoices: liveStats.dominantVoices,
+      silentMembers: liveStats.silentMembers,
+      interactions: liveStats.interactions.length > 0 ? liveStats.interactions : prev.interactions,
+      convergenceTimeline: liveStats.convergenceTimeline.length > 0 ? liveStats.convergenceTimeline : prev.convergenceTimeline,
+    }));
+  }, [liveStats]);
+
   useEffect(() => {
     if (!isConnected) return;
     const firstTimer = setTimeout(() => { runAnalysis(); }, 8000);
-    analysisIntervalRef.current = setInterval(() => { runAnalysis(); }, 12000);
+    analysisIntervalRef.current = setInterval(() => { runAnalysis(); }, 15000);
     return () => {
       clearTimeout(firstTimer);
       if (analysisIntervalRef.current) clearInterval(analysisIntervalRef.current);
