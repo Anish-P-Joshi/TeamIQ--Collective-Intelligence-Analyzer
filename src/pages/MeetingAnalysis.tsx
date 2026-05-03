@@ -660,7 +660,7 @@ const MeetingAnalysis = () => {
                     <div className="text-[10px]" style={{ color: theme.muted }}>Active Connections</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold">1.0s</div>
+                    <div className="text-lg font-bold">{liveStats.avgResponseSeconds}s</div>
                     <div className="text-[10px]" style={{ color: theme.muted }}>Avg Response</div>
                   </div>
                 </div>
