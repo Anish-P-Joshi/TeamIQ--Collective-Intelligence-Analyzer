@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveKit, LKTranscriptEntry } from "@/hooks/useLiveKit";
 import { VideoTile } from "@/components/VideoTile";
+import { toast } from "sonner";
 import {
   Mic, MicOff, Video, VideoOff, BarChart3, Brain, TrendingUp, MessageSquare,
   Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check
@@ -62,17 +63,32 @@ const MeetingAnalysis = () => {
   const org = searchParams.get("org") || "";
   const title = searchParams.get("title") || "Team Meeting";
   const roomName = searchParams.get("room") || "";
-  const displayName = searchParams.get("name") || "Guest";
+  const initialName = searchParams.get("name") || "";
 
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
 
+  // Display name — editable on pre-join screen for invitees
+  const [nameInput, setNameInput] = useState(initialName);
+  const displayName = nameInput.trim() || initialName || "Guest";
+
   // Stable identity per tab
-  const identity = useMemo(() => `${displayName.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).slice(2, 7)}`, [displayName]);
+  const identity = useMemo(() => `user-${Math.random().toString(36).slice(2, 10)}`, []);
+
+  const handleParticipantJoined = useCallback((name: string) => {
+    toast.success(`${name} joined the meeting`);
+  }, []);
+  const handleParticipantLeft = useCallback((name: string) => {
+    toast.info(`${name} left the meeting`);
+  }, []);
 
   const {
     isConnected, participants, entries, interim, transcript, error: lkError,
     connect, disconnect, toggleMic, toggleCam, room,
-  } = useLiveKit({ roomName, identity, displayName });
+  } = useLiveKit({
+    roomName, identity, displayName,
+    onParticipantJoined: handleParticipantJoined,
+    onParticipantLeft: handleParticipantLeft,
+  });
 
   const [analysis, setAnalysis] = useState<AnalysisData>(defaultAnalysis);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -120,7 +136,91 @@ const MeetingAnalysis = () => {
     return () => clearInterval(id);
   }, [participants]);
 
-  // AI analysis — use real transcript
+  // Live, client-side derived stats from real entries+participants — works without AI.
+  const liveStats = useMemo(() => {
+    const wordsByIdentity = new Map<string, { name: string; words: number; ideas: number }>();
+    participants.forEach(p => wordsByIdentity.set(p.identity, { name: p.name, words: 0, ideas: 0 }));
+    entries.forEach(e => {
+      const key = e.identity;
+      const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
+      existing.words += e.text.split(/\s+/).filter(Boolean).length;
+      // crude "idea" = utterance >= 6 words
+      if (e.text.split(/\s+/).filter(Boolean).length >= 6) existing.ideas += 1;
+      existing.name = e.speaker || existing.name;
+      wordsByIdentity.set(key, existing);
+    });
+    const totalWords = Array.from(wordsByIdentity.values()).reduce((s, v) => s + v.words, 0) || 1;
+    const insights = Array.from(wordsByIdentity.values()).map(v => ({
+      name: v.name,
+      talkTimePercent: Math.round((v.words / totalWords) * 100),
+      ideas: v.ideas,
+      sentiment: 'neutral' as const,
+    }));
+
+    // Participation balance: 100 = perfectly even, 0 = one person dominates
+    const n = insights.length || 1;
+    const ideal = 100 / n;
+    const variance = insights.reduce((s, p) => s + Math.pow(p.talkTimePercent - ideal, 2), 0) / n;
+    const balancePct = Math.max(0, Math.round(100 - Math.sqrt(variance) * 1.5));
+    const dominant = insights.filter(p => p.talkTimePercent > ideal * 1.7).length;
+    const silent = insights.filter(p => p.talkTimePercent < ideal * 0.3).length;
+
+    // Pairwise interactions: consecutive speaker A -> B
+    const interactionMap = new Map<string, number>();
+    for (let i = 1; i < entries.length; i++) {
+      const from = entries[i - 1].speaker;
+      const to = entries[i].speaker;
+      if (!from || !to || from === to) continue;
+      const key = `${from}|${to}`;
+      interactionMap.set(key, (interactionMap.get(key) || 0) + 1);
+    }
+    const interactions = Array.from(interactionMap.entries()).map(([k, weight]) => {
+      const [from, to] = k.split('|');
+      return { from, to, weight: Math.min(10, weight) };
+    });
+
+    // Convergence timeline: bucket entries per minute
+    const buckets = new Map<number, number>();
+    entries.forEach(e => {
+      const minute = Math.floor((e.timestamp - (entries[0]?.timestamp || e.timestamp)) / 60000);
+      buckets.set(minute, (buckets.get(minute) || 0) + 1);
+    });
+    const maxBucket = Math.max(1, ...Array.from(buckets.values()));
+    const timeline = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([m, c]) => ({
+      minute: m,
+      ideas: Math.round((c / maxBucket) * 100),
+      consensus: Math.min(100, balancePct + m * 2),
+      conflicts: Math.max(0, 30 - m * 3),
+    }));
+
+    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 25 + Math.min(40, totalWords / 20));
+    const intelligenceScore = Math.min(10, Math.max(1, (balancePct / 12) + (insights.length * 0.8) + Math.min(3, totalWords / 100)));
+    const noveltyScore = Math.min(100, Math.round(insights.reduce((s, p) => s + p.ideas, 0) * 8));
+    const convergenceScore = Math.min(100, balancePct);
+    const perspectiveRange = Math.min(100, insights.length * 20 + Math.min(20, totalWords / 30));
+    const qualityScore = Math.round((balancePct + ideaDiversity) / 2);
+
+    return {
+      participantInsights: insights,
+      participationBalance: balancePct,
+      ideaDiversity: Math.round(ideaDiversity),
+      intelligenceScore: Number(intelligenceScore.toFixed(1)),
+      noveltyScore,
+      convergenceScore,
+      perspectiveRange,
+      qualityScore,
+      balanceScore: Math.round((balancePct / 100) * 100) / 100,
+      dominantVoices: dominant,
+      silentMembers: silent + participants.filter(p => p.audioMuted).length,
+      interactions,
+      convergenceTimeline: timeline,
+      avgResponseSeconds: entries.length > 1
+        ? ((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000 / Math.max(1, entries.length - 1)).toFixed(1)
+        : '0.0',
+    };
+  }, [entries, participants]);
+
+  // AI analysis — supplements live stats with qualitative insights
   const runAnalysis = useCallback(async () => {
     if (!transcript || transcript === lastAnalyzedRef.current || isAnalyzing) return;
     lastAnalyzedRef.current = transcript;
@@ -142,14 +242,13 @@ const MeetingAnalysis = () => {
       });
       if (error) { console.error('Analysis error:', error); return; }
       if (data?.analysis) {
-        // Merge mute warnings into AI insights
         const warnings = muteWarnings.map(w => ({
           text: `${w.name} has been muted for ${Math.floor(w.seconds / 60)}m ${w.seconds % 60}s — they may have something to share.`,
           type: 'warning',
           priority: 2,
         }));
         const merged = [...warnings, ...(data.analysis.aiInsights || [])].slice(0, 6);
-        setAnalysis({ ...data.analysis, aiInsights: merged });
+        setAnalysis(prev => ({ ...prev, ...data.analysis, aiInsights: merged }));
       }
     } catch (e) {
       console.error('Analysis failed:', e);
@@ -158,10 +257,30 @@ const MeetingAnalysis = () => {
     }
   }, [transcript, participants, org, title, meetingTime, isAnalyzing, muteWarnings]);
 
+  // Merge live stats into analysis on every change so visuals always update
+  useEffect(() => {
+    setAnalysis(prev => ({
+      ...prev,
+      participantInsights: liveStats.participantInsights.length > 0 ? liveStats.participantInsights : prev.participantInsights,
+      participationBalance: liveStats.participationBalance,
+      ideaDiversity: liveStats.ideaDiversity,
+      intelligenceScore: liveStats.intelligenceScore,
+      noveltyScore: liveStats.noveltyScore,
+      convergenceScore: liveStats.convergenceScore,
+      perspectiveRange: liveStats.perspectiveRange,
+      qualityScore: liveStats.qualityScore,
+      balanceScore: liveStats.balanceScore,
+      dominantVoices: liveStats.dominantVoices,
+      silentMembers: liveStats.silentMembers,
+      interactions: liveStats.interactions.length > 0 ? liveStats.interactions : prev.interactions,
+      convergenceTimeline: liveStats.convergenceTimeline.length > 0 ? liveStats.convergenceTimeline : prev.convergenceTimeline,
+    }));
+  }, [liveStats]);
+
   useEffect(() => {
     if (!isConnected) return;
     const firstTimer = setTimeout(() => { runAnalysis(); }, 8000);
-    analysisIntervalRef.current = setInterval(() => { runAnalysis(); }, 12000);
+    analysisIntervalRef.current = setInterval(() => { runAnalysis(); }, 15000);
     return () => {
       clearTimeout(firstTimer);
       if (analysisIntervalRef.current) clearInterval(analysisIntervalRef.current);
@@ -182,6 +301,10 @@ const MeetingAnalysis = () => {
   };
 
   const handleJoin = async () => {
+    if (!nameInput.trim()) {
+      toast.error("Please enter your name to join");
+      return;
+    }
     setHasJoined(true);
     await connect();
   };
@@ -192,15 +315,16 @@ const MeetingAnalysis = () => {
   };
 
   const copyShareLink = () => {
-    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}&name=`;
+    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
+    toast.success("Invite link copied — share it with your team");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const localParticipant = participants.find(p => p.isLocal);
 
-  // Pre-join screen
+  // Pre-join screen — invitees enter their name here
   if (!hasJoined) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: theme.bg, color: theme.text }}>
@@ -214,10 +338,23 @@ const MeetingAnalysis = () => {
               <p className="text-xs" style={{ color: theme.muted }}>{org || 'TeamIQ Meeting'}</p>
             </div>
           </div>
-          <div className="space-y-3 mb-6">
-            <div className="flex justify-between text-sm">
-              <span style={{ color: theme.muted }}>Joining as</span>
-              <span className="font-medium">{displayName}</span>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: theme.muted }}>Your name</label>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleJoin(); }}
+                placeholder="Enter your name"
+                autoFocus
+                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2"
+                style={{
+                  background: 'hsl(0 0% 100% / 0.08)',
+                  border: `1px solid ${theme.border}`,
+                  color: theme.text,
+                }}
+              />
             </div>
             <div className="flex justify-between text-sm">
               <span style={{ color: theme.muted }}>Room</span>
@@ -225,7 +362,8 @@ const MeetingAnalysis = () => {
             </div>
           </div>
           <button onClick={handleJoin}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium"
+                  disabled={!nameInput.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium disabled:opacity-50"
                   style={{ background: theme.accent, color: 'white' }}>
             <Video className="w-5 h-5" /> Join Meeting
           </button>
@@ -522,7 +660,7 @@ const MeetingAnalysis = () => {
                     <div className="text-[10px]" style={{ color: theme.muted }}>Active Connections</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold">1.0s</div>
+                    <div className="text-lg font-bold">{liveStats.avgResponseSeconds}s</div>
                     <div className="text-[10px]" style={{ color: theme.muted }}>Avg Response</div>
                   </div>
                 </div>

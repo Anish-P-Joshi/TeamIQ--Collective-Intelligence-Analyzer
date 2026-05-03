@@ -8,8 +8,12 @@ import {
   Track,
   Participant,
   ConnectionState,
+  DataPacket_Kind,
 } from 'livekit-client';
 import { supabase } from '@/integrations/supabase/client';
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 export interface LKTranscriptEntry {
   speaker: string;     // participant.name (display) — auto-identified
@@ -36,9 +40,11 @@ interface UseLiveKitOptions {
   identity: string;
   displayName: string;
   onTranscript?: (entry: LKTranscriptEntry) => void;
+  onParticipantJoined?: (name: string) => void;
+  onParticipantLeft?: (name: string) => void;
 }
 
-export function useLiveKit({ roomName, identity, displayName, onTranscript }: UseLiveKitOptions) {
+export function useLiveKit({ roomName, identity, displayName, onTranscript, onParticipantJoined, onParticipantLeft }: UseLiveKitOptions) {
   const [room] = useState(() => new Room({
     adaptiveStream: true,
     dynacast: true,
@@ -173,7 +179,9 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
 
     rec.onresult = (event: any) => {
       let interimText = '';
-      const speaker = determineActiveSpeaker();
+      // Local mic only captures the LOCAL speaker — always attribute to ourselves.
+      const local = room.localParticipant;
+      const speaker = { name: local?.name || displayName, identity: local?.identity || identity };
       lastSpeakerRef.current = speaker.name;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -190,6 +198,11 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
           };
           setEntries(prev => [...prev, entry]);
           onTranscriptRef.current?.(entry);
+          // Broadcast to other participants via LiveKit data channel
+          try {
+            const payload = textEncoder.encode(JSON.stringify({ type: 'transcript', entry }));
+            local?.publishData(payload, { reliable: true });
+          } catch (err) { console.warn('publishData failed', err); }
         } else {
           interimText += result[0].transcript;
         }
@@ -257,13 +270,20 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
     refreshParticipants();
   }, [room, refreshParticipants]);
 
+  const joinCbRef = useRef(onParticipantJoined);
+  const leaveCbRef = useRef(onParticipantLeft);
+  useEffect(() => { joinCbRef.current = onParticipantJoined; }, [onParticipantJoined]);
+  useEffect(() => { leaveCbRef.current = onParticipantLeft; }, [onParticipantLeft]);
+
   // Wire up room events
   useEffect(() => {
     const onState = (s: ConnectionState) => setConnectionState(s);
     const onParticipantConnected = (p: RemoteParticipant) => {
+      joinCbRef.current?.(p.name || p.identity);
       refreshParticipants();
     };
     const onParticipantDisconnected = (p: RemoteParticipant) => {
+      leaveCbRef.current?.(p.name || p.identity);
       stopRecognitionForRemote(p.identity);
       refreshParticipants();
     };
@@ -279,6 +299,20 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
     const onTrackMuted = () => refreshParticipants();
     const onTrackUnmuted = () => refreshParticipants();
     const onActiveSpeakers = (_speakers: Participant[]) => refreshParticipants();
+    const onDataReceived = (payload: Uint8Array, participant?: RemoteParticipant) => {
+      try {
+        const msg = JSON.parse(textDecoder.decode(payload));
+        if (msg?.type === 'transcript' && msg.entry) {
+          const entry: LKTranscriptEntry = msg.entry;
+          setEntries(prev => {
+            // dedup by identity+timestamp+text
+            if (prev.some(e => e.identity === entry.identity && e.timestamp === entry.timestamp && e.text === entry.text)) return prev;
+            return [...prev, entry];
+          });
+          onTranscriptRef.current?.(entry);
+        }
+      } catch (e) { /* ignore */ }
+    };
 
     room.on(RoomEvent.ConnectionStateChanged, onState);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
@@ -288,6 +322,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
     room.on(RoomEvent.TrackMuted, onTrackMuted);
     room.on(RoomEvent.TrackUnmuted, onTrackUnmuted);
     room.on(RoomEvent.ActiveSpeakersChanged, onActiveSpeakers);
+    room.on(RoomEvent.DataReceived, onDataReceived);
 
     return () => {
       room.off(RoomEvent.ConnectionStateChanged, onState);
@@ -298,6 +333,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript }: Us
       room.off(RoomEvent.TrackMuted, onTrackMuted);
       room.off(RoomEvent.TrackUnmuted, onTrackUnmuted);
       room.off(RoomEvent.ActiveSpeakersChanged, onActiveSpeakers);
+      room.off(RoomEvent.DataReceived, onDataReceived);
     };
   }, [room, refreshParticipants, startRecognitionForRemote, stopRecognitionForRemote]);
 
