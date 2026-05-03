@@ -40,9 +40,11 @@ interface UseLiveKitOptions {
   identity: string;
   displayName: string;
   onTranscript?: (entry: LKTranscriptEntry) => void;
+  onParticipantJoined?: (name: string) => void;
+  onParticipantLeft?: (name: string) => void;
 }
 
-export function useLiveKit({ roomName, identity, displayName, onTranscript }: UseLiveKitOptions) {
+export function useLiveKit({ roomName, identity, displayName, onTranscript, onParticipantJoined, onParticipantLeft }: UseLiveKitOptions) {
   const [room] = useState(() => new Room({
     adaptiveStream: true,
     dynacast: true,
