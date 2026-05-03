@@ -179,7 +179,9 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
 
     rec.onresult = (event: any) => {
       let interimText = '';
-      const speaker = determineActiveSpeaker();
+      // Local mic only captures the LOCAL speaker — always attribute to ourselves.
+      const local = room.localParticipant;
+      const speaker = { name: local?.name || displayName, identity: local?.identity || identity };
       lastSpeakerRef.current = speaker.name;
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -196,6 +198,11 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
           };
           setEntries(prev => [...prev, entry]);
           onTranscriptRef.current?.(entry);
+          // Broadcast to other participants via LiveKit data channel
+          try {
+            const payload = textEncoder.encode(JSON.stringify({ type: 'transcript', entry }));
+            local?.publishData(payload, { reliable: true });
+          } catch (err) { console.warn('publishData failed', err); }
         } else {
           interimText += result[0].transcript;
         }
