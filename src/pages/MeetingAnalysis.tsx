@@ -301,6 +301,10 @@ const MeetingAnalysis = () => {
   };
 
   const handleJoin = async () => {
+    if (!nameInput.trim()) {
+      toast.error("Please enter your name to join");
+      return;
+    }
     setHasJoined(true);
     await connect();
   };
@@ -311,15 +315,16 @@ const MeetingAnalysis = () => {
   };
 
   const copyShareLink = () => {
-    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}&name=`;
+    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
+    toast.success("Invite link copied — share it with your team");
     setTimeout(() => setCopied(false), 2000);
   };
 
   const localParticipant = participants.find(p => p.isLocal);
 
-  // Pre-join screen
+  // Pre-join screen — invitees enter their name here
   if (!hasJoined) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: theme.bg, color: theme.text }}>
@@ -333,10 +338,23 @@ const MeetingAnalysis = () => {
               <p className="text-xs" style={{ color: theme.muted }}>{org || 'TeamIQ Meeting'}</p>
             </div>
           </div>
-          <div className="space-y-3 mb-6">
-            <div className="flex justify-between text-sm">
-              <span style={{ color: theme.muted }}>Joining as</span>
-              <span className="font-medium">{displayName}</span>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs uppercase tracking-wider mb-2" style={{ color: theme.muted }}>Your name</label>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleJoin(); }}
+                placeholder="Enter your name"
+                autoFocus
+                className="w-full px-4 py-3 rounded-xl outline-none focus:ring-2"
+                style={{
+                  background: 'hsl(0 0% 100% / 0.08)',
+                  border: `1px solid ${theme.border}`,
+                  color: theme.text,
+                }}
+              />
             </div>
             <div className="flex justify-between text-sm">
               <span style={{ color: theme.muted }}>Room</span>
@@ -344,7 +362,8 @@ const MeetingAnalysis = () => {
             </div>
           </div>
           <button onClick={handleJoin}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium"
+                  disabled={!nameInput.trim()}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl font-medium disabled:opacity-50"
                   style={{ background: theme.accent, color: 'white' }}>
             <Video className="w-5 h-5" /> Join Meeting
           </button>
