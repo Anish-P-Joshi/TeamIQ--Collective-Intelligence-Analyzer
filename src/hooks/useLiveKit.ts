@@ -8,8 +8,12 @@ import {
   Track,
   Participant,
   ConnectionState,
+  DataPacket_Kind,
 } from 'livekit-client';
 import { supabase } from '@/integrations/supabase/client';
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
 
 export interface LKTranscriptEntry {
   speaker: string;     // participant.name (display) — auto-identified
