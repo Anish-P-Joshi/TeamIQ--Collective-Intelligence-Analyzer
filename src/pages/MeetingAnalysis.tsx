@@ -63,17 +63,32 @@ const MeetingAnalysis = () => {
   const org = searchParams.get("org") || "";
   const title = searchParams.get("title") || "Team Meeting";
   const roomName = searchParams.get("room") || "";
-  const displayName = searchParams.get("name") || "Guest";
+  const initialName = searchParams.get("name") || "";
 
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
 
+  // Display name — editable on pre-join screen for invitees
+  const [nameInput, setNameInput] = useState(initialName);
+  const displayName = nameInput.trim() || initialName || "Guest";
+
   // Stable identity per tab
-  const identity = useMemo(() => `${displayName.toLowerCase().replace(/\s+/g, '-')}-${Math.random().toString(36).slice(2, 7)}`, [displayName]);
+  const identity = useMemo(() => `user-${Math.random().toString(36).slice(2, 10)}`, []);
+
+  const handleParticipantJoined = useCallback((name: string) => {
+    toast.success(`${name} joined the meeting`);
+  }, []);
+  const handleParticipantLeft = useCallback((name: string) => {
+    toast.info(`${name} left the meeting`);
+  }, []);
 
   const {
     isConnected, participants, entries, interim, transcript, error: lkError,
     connect, disconnect, toggleMic, toggleCam, room,
-  } = useLiveKit({ roomName, identity, displayName });
+  } = useLiveKit({
+    roomName, identity, displayName,
+    onParticipantJoined: handleParticipantJoined,
+    onParticipantLeft: handleParticipantLeft,
+  });
 
   const [analysis, setAnalysis] = useState<AnalysisData>(defaultAnalysis);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
