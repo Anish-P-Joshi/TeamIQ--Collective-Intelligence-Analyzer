@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveKit, LKTranscriptEntry } from "@/hooks/useLiveKit";
 import { VideoTile } from "@/components/VideoTile";
+import { toast } from "sonner";
 import {
   Mic, MicOff, Video, VideoOff, BarChart3, Brain, TrendingUp, MessageSquare,
   Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check
