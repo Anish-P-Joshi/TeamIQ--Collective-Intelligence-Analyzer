@@ -270,13 +270,20 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
     refreshParticipants();
   }, [room, refreshParticipants]);
 
+  const joinCbRef = useRef(onParticipantJoined);
+  const leaveCbRef = useRef(onParticipantLeft);
+  useEffect(() => { joinCbRef.current = onParticipantJoined; }, [onParticipantJoined]);
+  useEffect(() => { leaveCbRef.current = onParticipantLeft; }, [onParticipantLeft]);
+
   // Wire up room events
   useEffect(() => {
     const onState = (s: ConnectionState) => setConnectionState(s);
     const onParticipantConnected = (p: RemoteParticipant) => {
+      joinCbRef.current?.(p.name || p.identity);
       refreshParticipants();
     };
     const onParticipantDisconnected = (p: RemoteParticipant) => {
+      leaveCbRef.current?.(p.name || p.identity);
       stopRecognitionForRemote(p.identity);
       refreshParticipants();
     };
@@ -292,6 +299,20 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
     const onTrackMuted = () => refreshParticipants();
     const onTrackUnmuted = () => refreshParticipants();
     const onActiveSpeakers = (_speakers: Participant[]) => refreshParticipants();
+    const onDataReceived = (payload: Uint8Array, participant?: RemoteParticipant) => {
+      try {
+        const msg = JSON.parse(textDecoder.decode(payload));
+        if (msg?.type === 'transcript' && msg.entry) {
+          const entry: LKTranscriptEntry = msg.entry;
+          setEntries(prev => {
+            // dedup by identity+timestamp+text
+            if (prev.some(e => e.identity === entry.identity && e.timestamp === entry.timestamp && e.text === entry.text)) return prev;
+            return [...prev, entry];
+          });
+          onTranscriptRef.current?.(entry);
+        }
+      } catch (e) { /* ignore */ }
+    };
 
     room.on(RoomEvent.ConnectionStateChanged, onState);
     room.on(RoomEvent.ParticipantConnected, onParticipantConnected);
@@ -301,6 +322,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
     room.on(RoomEvent.TrackMuted, onTrackMuted);
     room.on(RoomEvent.TrackUnmuted, onTrackUnmuted);
     room.on(RoomEvent.ActiveSpeakersChanged, onActiveSpeakers);
+    room.on(RoomEvent.DataReceived, onDataReceived);
 
     return () => {
       room.off(RoomEvent.ConnectionStateChanged, onState);
@@ -311,6 +333,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
       room.off(RoomEvent.TrackMuted, onTrackMuted);
       room.off(RoomEvent.TrackUnmuted, onTrackUnmuted);
       room.off(RoomEvent.ActiveSpeakersChanged, onActiveSpeakers);
+      room.off(RoomEvent.DataReceived, onDataReceived);
     };
   }, [room, refreshParticipants, startRecognitionForRemote, stopRecognitionForRemote]);
 
