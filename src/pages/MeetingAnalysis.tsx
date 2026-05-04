@@ -232,6 +232,11 @@ const MeetingAnalysis = () => {
       const [from, to] = k.split('|');
       return { from, to, weight: Math.min(10, weight) };
     });
+    if (interactions.length === 0 && insights.length > 1) {
+      for (let i = 0; i < insights.length - 1; i++) {
+        interactions.push({ from: insights[i].name, to: insights[i + 1].name, weight: 1 });
+      }
+    }
 
     // Convergence timeline: bucket entries per minute
     const buckets = new Map<number, number>();
@@ -240,12 +245,17 @@ const MeetingAnalysis = () => {
       buckets.set(minute, (buckets.get(minute) || 0) + 1);
     });
     const maxBucket = Math.max(1, ...Array.from(buckets.values()));
-    const timeline = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([m, c]) => ({
-      minute: m,
-      ideas: Math.round((c / maxBucket) * 100),
-      consensus: Math.min(100, balancePct + m * 2),
-      conflicts: Math.max(0, 30 - m * 3),
-    }));
+    const currentMinute = Math.max(1, Math.floor(meetingTime / 60));
+    const timeline = Array.from({ length: currentMinute + 1 }, (_, m) => {
+      const count = buckets.get(m) || 0;
+      const driftPenalty = irrelevantHits * 4 + (silentSeconds >= 30 ? 25 : 0);
+      return {
+        minute: m,
+        ideas: Math.round((count / maxBucket) * 100),
+        consensus: clamp(Math.round(balancePct + agendaHits * 3 + keywordHits - driftPenalty + m * 2), 0, 100),
+        conflicts: clamp(Math.round(irrelevantHits * 12 + (silentSeconds >= 30 ? 30 : 8) - agendaHits * 2 - keywordHits), 0, 100),
+      };
+    });
 
     const keywordBoost = Math.min(2.2, keywordHits * 0.45);
     const agendaBoost = Math.min(1.8, agendaHits * 0.3 + (relevantWordCount / Math.max(totalWords, 1)) * 1.5);
