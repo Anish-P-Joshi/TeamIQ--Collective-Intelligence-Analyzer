@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import type { LocalParticipant, RemoteParticipant } from "livekit-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveKit, LKTranscriptEntry } from "@/hooks/useLiveKit";
 import { VideoTile } from "@/components/VideoTile";
@@ -172,7 +173,11 @@ const MeetingAnalysis = () => {
     const wordsByIdentity = new Map<string, { name: string; words: number; ideas: number }>();
     participants.forEach(p => wordsByIdentity.set(p.identity, { name: p.name, words: 0, ideas: 0 }));
     const now = Date.now();
-    const lastSpeechAt = entries[entries.length - 1]?.timestamp || null;
+    const interimIdentity = interim ? (participants.find(p => p.name === interim.speaker)?.identity || 'interim-speaker') : '';
+    const analyticEntries = interim?.text?.trim()
+      ? [...entries, { speaker: interim.speaker, identity: interimIdentity, text: interim.text, timestamp: now, isFinal: false }]
+      : entries;
+    const lastSpeechAt = analyticEntries[analyticEntries.length - 1]?.timestamp || null;
     const silentSeconds = isConnected ? Math.floor(((lastSpeechAt ? now - lastSpeechAt : meetingTime * 1000) / 1000)) : 0;
     let keywordHits = 0;
     let agendaHits = 0;
@@ -180,7 +185,7 @@ const MeetingAnalysis = () => {
     let relevantWordCount = 0;
     let irrelevantStart: number | null = null;
 
-    entries.forEach(e => {
+    analyticEntries.forEach(e => {
       const key = e.identity;
       const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
       const lowerText = e.text.toLowerCase();
@@ -221,9 +226,9 @@ const MeetingAnalysis = () => {
 
     // Pairwise interactions: consecutive speaker A -> B
     const interactionMap = new Map<string, number>();
-    for (let i = 1; i < entries.length; i++) {
-      const from = entries[i - 1].speaker;
-      const to = entries[i].speaker;
+    for (let i = 1; i < analyticEntries.length; i++) {
+      const from = analyticEntries[i - 1].speaker;
+      const to = analyticEntries[i].speaker;
       if (!from || !to || from === to) continue;
       const key = `${from}|${to}`;
       interactionMap.set(key, (interactionMap.get(key) || 0) + 1);
@@ -240,8 +245,8 @@ const MeetingAnalysis = () => {
 
     // Convergence timeline: bucket entries per minute
     const buckets = new Map<number, number>();
-    entries.forEach(e => {
-      const minute = Math.floor((e.timestamp - (entries[0]?.timestamp || e.timestamp)) / 60000);
+    analyticEntries.forEach(e => {
+      const minute = Math.floor((e.timestamp - (analyticEntries[0]?.timestamp || e.timestamp)) / 60000);
       buckets.set(minute, (buckets.get(minute) || 0) + 1);
     });
     const maxBucket = Math.max(1, ...Array.from(buckets.values()));
@@ -296,11 +301,11 @@ const MeetingAnalysis = () => {
       irrelevantSeconds: irrelevantStart ? Math.floor((now - irrelevantStart) / 1000) : 0,
       silentSeconds,
       scoreReason,
-      avgResponseSeconds: entries.length > 1
-        ? ((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000 / Math.max(1, entries.length - 1)).toFixed(1)
+      avgResponseSeconds: analyticEntries.length > 1
+        ? ((analyticEntries[analyticEntries.length - 1].timestamp - analyticEntries[0].timestamp) / 1000 / Math.max(1, analyticEntries.length - 1)).toFixed(1)
         : '0.0',
     };
-  }, [entries, participants, monitoredKeywords, agendaTerms, isConnected, meetingTime]);
+  }, [entries, interim, participants, monitoredKeywords, agendaTerms, isConnected, meetingTime]);
 
   const localInsights = useMemo<AnalysisData['aiInsights']>(() => {
     const inactiveNames = participants
