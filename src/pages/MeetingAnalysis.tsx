@@ -486,7 +486,7 @@ const MeetingAnalysis = () => {
   };
 
   const copyShareLink = () => {
-    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}`;
+    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}&keywords=${encodeURIComponent(keywordsParam)}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success("Invite link copied — share it with your team");
@@ -625,7 +625,7 @@ const MeetingAnalysis = () => {
           </button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="text-sm px-3 py-1 rounded transition hidden md:flex items-center gap-1"
+              <button className="text-sm px-3 py-1 rounded transition flex items-center gap-1"
                       style={{ color: theme.muted, border: `1px solid ${theme.border}` }}>
                 Analytics <ChevronDown className="w-3 h-3" />
               </button>
