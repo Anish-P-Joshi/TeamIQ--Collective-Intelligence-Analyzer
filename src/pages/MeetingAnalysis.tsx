@@ -493,6 +493,46 @@ const MeetingAnalysis = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const downloadAnalyticsPdf = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 16;
+
+    const write = (text: string, size = 10, style: 'normal' | 'bold' = 'normal') => {
+      doc.setFont('helvetica', style);
+      doc.setFontSize(size);
+      const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+      lines.forEach((line: string) => {
+        if (y > 282) { doc.addPage(); y = 16; }
+        doc.text(line, margin, y);
+        y += size * 0.42 + 2;
+      });
+    };
+
+    write('TeamIQ Meeting Analytics Summary', 16, 'bold');
+    write(`${title} ${org ? `- ${org}` : ''}`, 11);
+    write(`Duration: ${formatTime(meetingTime)} | Participants: ${participants.map(p => p.name).join(', ') || 'None'}`);
+    write(`Current Intelligence Score: ${analysis.intelligenceScore.toFixed(1)}/10`, 13, 'bold');
+    write(`Participation Balance: ${analysis.participationBalance}% | Idea Diversity: ${analysis.ideaDiversity}% | Consensus: ${analysis.convergenceScore}%`);
+    write(`Keywords monitored: ${monitoredKeywords.join(', ') || 'None entered'}`);
+    write('');
+    write('Score Shifts', 13, 'bold');
+    const history = scoreHistory.length > 0 ? scoreHistory : [{ meetingSecond: meetingTime, score: analysis.intelligenceScore, keywordHits: liveStats.keywordHits, agendaHits: liveStats.agendaHits, irrelevantHits: liveStats.irrelevantHits, reason: liveStats.scoreReason, timestamp: Date.now() }];
+    history.slice(-24).forEach(point => {
+      write(`${formatTime(point.meetingSecond)} - ${point.score.toFixed(1)}/10 | keywords ${point.keywordHits}, agenda ${point.agendaHits}, drift ${point.irrelevantHits} | ${point.reason}`, 9);
+    });
+    write('');
+    write('AI Insights', 13, 'bold');
+    analysis.aiInsights.forEach(insight => write(`${insight.type.toUpperCase()}: ${insight.text}`, 9));
+    write('');
+    write('Participant Summary', 13, 'bold');
+    analysis.participantInsights.forEach(p => write(`${p.name}: ${p.talkTimePercent}% participation, ${p.ideas} ideas`, 9));
+
+    doc.save(`TeamIQ-${title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'meeting'}-analytics.pdf`);
+    toast.success('Analytics PDF downloaded');
+  };
+
   const localParticipant = participants.find(p => p.isLocal);
 
   // Pre-join screen — invitees enter their name here
