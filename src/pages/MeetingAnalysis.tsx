@@ -339,6 +339,8 @@ const MeetingAnalysis = () => {
           participants: participantNames,
           organization: org,
           meetingTitle: title,
+          monitoredKeywords,
+          agendaTerms,
           meetingTimeSeconds: meetingTime,
           mutedParticipants: participants.filter(p => p.audioMuted && p.mutedSince).map(p => ({
             name: p.name,
@@ -353,7 +355,9 @@ const MeetingAnalysis = () => {
           type: 'warning',
           priority: 2,
         }));
-        const merged = [...warnings, ...(data.analysis.aiInsights || [])].slice(0, 6);
+        const merged = [...manualInsights, ...localInsights, ...warnings, ...(data.analysis.aiInsights || [])]
+          .sort((a, b) => b.priority - a.priority)
+          .slice(0, 6);
         setAnalysis(prev => ({ ...prev, ...data.analysis, aiInsights: merged }));
       }
     } catch (e) {
@@ -361,7 +365,7 @@ const MeetingAnalysis = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [transcript, participants, org, title, meetingTime, isAnalyzing, muteWarnings]);
+  }, [transcript, participants, org, title, monitoredKeywords, agendaTerms, meetingTime, isAnalyzing, muteWarnings, manualInsights, localInsights]);
 
   // Merge live stats into analysis on every change so visuals always update
   useEffect(() => {
