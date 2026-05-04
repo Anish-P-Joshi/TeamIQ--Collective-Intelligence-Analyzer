@@ -31,6 +31,7 @@ export interface ParticipantState {
   isSpeaking: boolean;
   audioLevel: number;
   mutedSince: number | null; // ms timestamp when audio was muted, null if unmuted
+  inactiveSince: number | null; // ms timestamp when both audio and video are off
   joinedAt: number;
 }
 
@@ -75,6 +76,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
         isSpeaking: local.isSpeaking,
         audioLevel: local.audioLevel,
         mutedSince: !local.isMicrophoneEnabled ? Date.now() : null,
+        inactiveSince: !local.isMicrophoneEnabled && !local.isCameraEnabled ? Date.now() : null,
         joinedAt: Date.now(),
       });
     }
@@ -94,6 +96,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
         isSpeaking: p.isSpeaking,
         audioLevel: p.audioLevel,
         mutedSince: null,
+        inactiveSince: audioMuted && videoMuted ? Date.now() : null,
         joinedAt: Date.now(),
       });
     });
@@ -107,6 +110,9 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
           ...p,
           mutedSince: p.audioMuted
             ? (old.mutedSince ?? Date.now())
+            : null,
+          inactiveSince: p.audioMuted && p.videoMuted
+            ? (old.inactiveSince ?? Date.now())
             : null,
           joinedAt: old.joinedAt,
         };
