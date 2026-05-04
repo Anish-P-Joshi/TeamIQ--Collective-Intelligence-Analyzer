@@ -380,8 +380,11 @@ const MeetingAnalysis = () => {
       silentMembers: liveStats.silentMembers,
       interactions: liveStats.interactions.length > 0 ? liveStats.interactions : prev.interactions,
       convergenceTimeline: liveStats.convergenceTimeline.length > 0 ? liveStats.convergenceTimeline : prev.convergenceTimeline,
+      aiInsights: [...manualInsights, ...localInsights, ...(prev.aiInsights || []).filter(insight => ![...manualInsights, ...localInsights].some(local => local.text === insight.text))]
+        .sort((a, b) => b.priority - a.priority)
+        .slice(0, 6),
     }));
-  }, [liveStats]);
+  }, [liveStats, localInsights, manualInsights]);
 
   useEffect(() => {
     if (!isConnected) return;
