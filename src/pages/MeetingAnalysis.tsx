@@ -171,12 +171,36 @@ const MeetingAnalysis = () => {
   const liveStats = useMemo(() => {
     const wordsByIdentity = new Map<string, { name: string; words: number; ideas: number }>();
     participants.forEach(p => wordsByIdentity.set(p.identity, { name: p.name, words: 0, ideas: 0 }));
+    const now = Date.now();
+    const lastSpeechAt = entries[entries.length - 1]?.timestamp || null;
+    const silentSeconds = isConnected ? Math.floor(((lastSpeechAt ? now - lastSpeechAt : meetingTime * 1000) / 1000)) : 0;
+    let keywordHits = 0;
+    let agendaHits = 0;
+    let irrelevantHits = 0;
+    let relevantWordCount = 0;
+    let irrelevantStart: number | null = null;
+
+    const hasAnyTerm = (terms: string[], text: string) => terms.some(term => text.includes(term));
     entries.forEach(e => {
       const key = e.identity;
       const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
-      existing.words += e.text.split(/\s+/).filter(Boolean).length;
+      const lowerText = e.text.toLowerCase();
+      const words = e.text.split(/\s+/).filter(Boolean).length;
+      const matchedKeywords = monitoredKeywords.filter(term => lowerText.includes(term)).length;
+      const matchedAgenda = agendaTerms.filter(term => lowerText.includes(term)).length;
+      keywordHits += matchedKeywords;
+      agendaHits += matchedAgenda;
+      if (matchedKeywords || matchedAgenda) {
+        relevantWordCount += words;
+        irrelevantStart = null;
+      } else if (words >= 4) {
+        irrelevantHits += 1;
+        irrelevantStart = irrelevantStart ?? e.timestamp;
+      }
+
+      existing.words += words;
       // crude "idea" = utterance >= 6 words
-      if (e.text.split(/\s+/).filter(Boolean).length >= 6) existing.ideas += 1;
+      if (words >= 6) existing.ideas += 1;
       existing.name = e.speaker || existing.name;
       wordsByIdentity.set(key, existing);
     });
@@ -224,12 +248,24 @@ const MeetingAnalysis = () => {
       conflicts: Math.max(0, 30 - m * 3),
     }));
 
-    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 25 + Math.min(40, totalWords / 20));
-    const intelligenceScore = Math.min(10, Math.max(1, (balancePct / 12) + (insights.length * 0.8) + Math.min(3, totalWords / 100)));
+    const keywordBoost = Math.min(2.2, keywordHits * 0.45);
+    const agendaBoost = Math.min(1.8, agendaHits * 0.3 + (relevantWordCount / Math.max(totalWords, 1)) * 1.5);
+    const irrelevantPenalty = Math.min(3, irrelevantHits * 0.35);
+    const silencePenalty = silentSeconds >= 30 ? 5 : silentSeconds >= 20 ? 2 : 0;
+    const activityPenalty = participants.filter(p => p.audioMuted && p.videoMuted).length * 0.35;
+    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 22 + Math.min(28, totalWords / 18) + keywordHits * 4 + agendaHits * 2);
+    const intelligenceScore = clamp((balancePct / 16) + (insights.length * 0.55) + Math.min(2.1, totalWords / 90) + keywordBoost + agendaBoost - irrelevantPenalty - silencePenalty - activityPenalty, 1, 10);
     const noveltyScore = Math.min(100, Math.round(insights.reduce((s, p) => s + p.ideas, 0) * 8));
-    const convergenceScore = Math.min(100, balancePct);
-    const perspectiveRange = Math.min(100, insights.length * 20 + Math.min(20, totalWords / 30));
-    const qualityScore = Math.round((balancePct + ideaDiversity) / 2);
+    const convergenceScore = clamp(Math.round(balancePct + agendaHits * 4 + keywordHits * 2 - irrelevantHits * 6 - (silentSeconds >= 30 ? 35 : 0)), 0, 100);
+    const perspectiveRange = Math.min(100, insights.length * 18 + Math.min(25, totalWords / 25) + insights.filter(p => p.ideas > 0).length * 8);
+    const qualityScore = clamp(Math.round((balancePct + ideaDiversity + convergenceScore) / 3), 0, 100);
+    const scoreReason = silentSeconds >= 30
+      ? 'Meeting silence over 30s caused a major score drop'
+      : keywordHits > 0 || agendaHits > 0
+        ? 'Score increased from monitored keywords and agenda-relevant discussion'
+        : irrelevantHits > 0
+          ? 'Score reduced because recent speech drifted away from the agenda'
+          : 'Score based on live speaking balance and discussion volume';
 
     return {
       participantInsights: insights,
@@ -245,11 +281,17 @@ const MeetingAnalysis = () => {
       silentMembers: silent + participants.filter(p => p.audioMuted).length,
       interactions,
       convergenceTimeline: timeline,
+      keywordHits,
+      agendaHits,
+      irrelevantHits,
+      irrelevantSeconds: irrelevantStart ? Math.floor((now - irrelevantStart) / 1000) : 0,
+      silentSeconds,
+      scoreReason,
       avgResponseSeconds: entries.length > 1
         ? ((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000 / Math.max(1, entries.length - 1)).toFixed(1)
         : '0.0',
     };
-  }, [entries, participants]);
+  }, [entries, participants, monitoredKeywords, agendaTerms, isConnected, meetingTime]);
 
   // AI analysis — supplements live stats with qualitative insights
   const runAnalysis = useCallback(async () => {
