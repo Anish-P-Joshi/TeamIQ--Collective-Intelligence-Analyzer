@@ -388,6 +388,54 @@ const MeetingAnalysis = () => {
 
   useEffect(() => {
     if (!isConnected) return;
+    const now = Date.now();
+    if (liveStats.irrelevantSeconds >= 15 && now - irrelevantWarningRef.current > 45000) {
+      irrelevantWarningRef.current = now;
+      const text = "Conversation shifting, advice to stick to agenda.";
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    }
+    if (liveStats.silentSeconds >= 30 && now - silenceWarningRef.current > 45000) {
+      silenceWarningRef.current = now;
+      const text = "The meeting has been silent for over 30 seconds, so the intelligence score dropped sharply.";
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    }
+    participants.forEach(p => {
+      if (!p.audioMuted || !p.videoMuted || !p.inactiveSince) return;
+      if (now - p.inactiveSince < 30000) return;
+      const lastWarn = inactiveWarningRef.current.get(p.identity) || 0;
+      if (now - lastWarn < 90000) return;
+      inactiveWarningRef.current.set(p.identity, now);
+      const text = `${p.name} has been inactive, they might have something to contribute!`;
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    });
+  }, [isConnected, liveStats.irrelevantSeconds, liveStats.silentSeconds, participants]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+    const id = setInterval(() => {
+      setScoreHistory(prev => {
+        const last = prev[prev.length - 1];
+        const point: ScorePoint = {
+          timestamp: Date.now(),
+          meetingSecond: meetingTime,
+          score: liveStats.intelligenceScore,
+          keywordHits: liveStats.keywordHits,
+          agendaHits: liveStats.agendaHits,
+          irrelevantHits: liveStats.irrelevantHits,
+          reason: liveStats.scoreReason,
+        };
+        if (last && last.meetingSecond === point.meetingSecond) return prev;
+        return [...prev.slice(-119), point];
+      });
+    }, 5000);
+    return () => clearInterval(id);
+  }, [isConnected, meetingTime, liveStats]);
+
+  useEffect(() => {
+    if (!isConnected) return;
     const firstTimer = setTimeout(() => { runAnalysis(); }, 8000);
     analysisIntervalRef.current = setInterval(() => { runAnalysis(); }, 15000);
     return () => {
