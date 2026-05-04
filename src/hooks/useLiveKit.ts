@@ -8,7 +8,6 @@ import {
   Track,
   Participant,
   ConnectionState,
-  DataPacket_Kind,
 } from 'livekit-client';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,6 +31,7 @@ export interface ParticipantState {
   isSpeaking: boolean;
   audioLevel: number;
   mutedSince: number | null; // ms timestamp when audio was muted, null if unmuted
+  inactiveSince: number | null; // ms timestamp when both audio and video are off
   joinedAt: number;
 }
 
@@ -76,6 +76,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
         isSpeaking: local.isSpeaking,
         audioLevel: local.audioLevel,
         mutedSince: !local.isMicrophoneEnabled ? Date.now() : null,
+        inactiveSince: !local.isMicrophoneEnabled && !local.isCameraEnabled ? Date.now() : null,
         joinedAt: Date.now(),
       });
     }
@@ -95,6 +96,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
         isSpeaking: p.isSpeaking,
         audioLevel: p.audioLevel,
         mutedSince: null,
+        inactiveSince: audioMuted && videoMuted ? Date.now() : null,
         joinedAt: Date.now(),
       });
     });
@@ -108,6 +110,9 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
           ...p,
           mutedSince: p.audioMuted
             ? (old.mutedSince ?? Date.now())
+            : null,
+          inactiveSince: p.audioMuted && p.videoMuted
+            ? (old.inactiveSince ?? Date.now())
             : null,
           joinedAt: old.joinedAt,
         };
@@ -146,6 +151,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
   // speaking in the room (LiveKit gives us isSpeaking + audioLevel per participant).
   const localRecRef = useRef<any>(null);
   const lastSpeakerRef = useRef<string>('');
+  const lastInterimBroadcastRef = useRef(0);
 
   const determineActiveSpeaker = useCallback((): { name: string; identity: string } => {
     // Pick the participant with the highest audioLevel among those marked as speaking
@@ -208,6 +214,18 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
         }
       }
       setInterim(interimText ? { speaker: speaker.name, text: interimText } : null);
+      if (interimText && Date.now() - lastInterimBroadcastRef.current > 500) {
+        lastInterimBroadcastRef.current = Date.now();
+        try {
+          const payload = textEncoder.encode(JSON.stringify({
+            type: 'interim-transcript',
+            speaker: speaker.name,
+            identity: speaker.identity,
+            text: interimText.trim(),
+          }));
+          local?.publishData(payload, { reliable: false });
+        } catch (err) { console.warn('publishData interim failed', err); }
+      }
     };
 
     rec.onerror = (e: any) => {
@@ -223,7 +241,7 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
 
     localRecRef.current = rec;
     try { rec.start(); } catch (e) { console.error('Failed to start SR', e); }
-  }, [determineActiveSpeaker]);
+  }, [displayName, identity, room]);
 
   const stopLocalRecognition = useCallback(() => {
     const rec = localRecRef.current;
@@ -261,8 +279,14 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
   const toggleMic = useCallback(async () => {
     const enabled = room.localParticipant.isMicrophoneEnabled;
     await room.localParticipant.setMicrophoneEnabled(!enabled);
+    if (enabled) {
+      stopLocalRecognition();
+      setInterim(null);
+    } else {
+      startLocalRecognition();
+    }
     refreshParticipants();
-  }, [room, refreshParticipants]);
+  }, [room, refreshParticipants, startLocalRecognition, stopLocalRecognition]);
 
   const toggleCam = useCallback(async () => {
     const enabled = room.localParticipant.isCameraEnabled;
@@ -309,7 +333,11 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
             if (prev.some(e => e.identity === entry.identity && e.timestamp === entry.timestamp && e.text === entry.text)) return prev;
             return [...prev, entry];
           });
+          setInterim(current => current?.speaker === entry.speaker ? null : current);
           onTranscriptRef.current?.(entry);
+        }
+        if (msg?.type === 'interim-transcript' && msg.text) {
+          setInterim({ speaker: msg.speaker || participant?.name || participant?.identity || 'Speaker', text: msg.text });
         }
       } catch (e) { /* ignore */ }
     };

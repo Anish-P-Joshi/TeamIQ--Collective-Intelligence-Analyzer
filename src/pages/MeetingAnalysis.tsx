@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import type { LocalParticipant, RemoteParticipant } from "livekit-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveKit, LKTranscriptEntry } from "@/hooks/useLiveKit";
 import { VideoTile } from "@/components/VideoTile";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
 import {
   Mic, MicOff, Video, VideoOff, BarChart3, Brain, TrendingUp, MessageSquare,
-  Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check
+  Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check,
+  Download, ChevronDown, Eye, EyeOff
 } from "lucide-react";
 
 interface AnalysisData {
@@ -33,6 +37,16 @@ interface AnalysisData {
   qualityScore?: number;
 }
 
+interface ScorePoint {
+  timestamp: number;
+  meetingSecond: number;
+  score: number;
+  keywordHits: number;
+  agendaHits: number;
+  irrelevantHits: number;
+  reason: string;
+}
+
 const defaultAnalysis: AnalysisData = {
   intelligenceScore: 0, participationBalance: 0, ideaDiversity: 0,
   currentTopics: [], currentSpeaker: "",
@@ -57,6 +71,16 @@ const THEMES = [
 
 const PARTICIPANT_COLORS = ["hsl(210 90% 60%)", "hsl(150 70% 55%)", "hsl(280 80% 65%)", "hsl(30 90% 60%)", "hsl(190 85% 55%)", "hsl(330 80% 65%)", "hsl(50 90% 60%)", "hsl(170 70% 55%)"];
 
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'will', 'you', 'are', 'was', 'were', 'our', 'your', 'they', 'them', 'about', 'into', 'what', 'when', 'where', 'how', 'why', 'can', 'could', 'should', 'would', 'just', 'like', 'need', 'going', 'meeting', 'team']);
+
+const extractTerms = (value: string) => value
+  .toLowerCase()
+  .split(/[^a-z0-9]+/)
+  .map(term => term.trim())
+  .filter(term => term.length >= 3 && !STOP_WORDS.has(term));
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
 const MeetingAnalysis = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -64,6 +88,9 @@ const MeetingAnalysis = () => {
   const title = searchParams.get("title") || "Team Meeting";
   const roomName = searchParams.get("room") || "";
   const initialName = searchParams.get("name") || "";
+  const keywordsParam = searchParams.get("keywords") || "";
+  const monitoredKeywords = useMemo(() => extractTerms(keywordsParam), [keywordsParam]);
+  const agendaTerms = useMemo(() => Array.from(new Set([...extractTerms(title), ...extractTerms(org)])), [title, org]);
 
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
 
@@ -97,12 +124,17 @@ const MeetingAnalysis = () => {
   const [hasJoined, setHasJoined] = useState(false);
   const [copied, setCopied] = useState(false);
   const [muteWarnings, setMuteWarnings] = useState<{ name: string; seconds: number; ts: number }[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<ScorePoint[]>([]);
+  const [manualInsights, setManualInsights] = useState<AnalysisData['aiInsights']>([]);
 
   const lastAnalyzedRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const analysisIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const lastWarningRef = useRef<Map<string, number>>(new Map());
+  const inactiveWarningRef = useRef<Map<string, number>>(new Map());
+  const irrelevantWarningRef = useRef(0);
+  const silenceWarningRef = useRef(0);
 
   // Meeting timer
   useEffect(() => {
@@ -140,12 +172,39 @@ const MeetingAnalysis = () => {
   const liveStats = useMemo(() => {
     const wordsByIdentity = new Map<string, { name: string; words: number; ideas: number }>();
     participants.forEach(p => wordsByIdentity.set(p.identity, { name: p.name, words: 0, ideas: 0 }));
-    entries.forEach(e => {
+    const now = Date.now();
+    const interimIdentity = interim ? (participants.find(p => p.name === interim.speaker)?.identity || 'interim-speaker') : '';
+    const analyticEntries = interim?.text?.trim()
+      ? [...entries, { speaker: interim.speaker, identity: interimIdentity, text: interim.text, timestamp: now, isFinal: false }]
+      : entries;
+    const lastSpeechAt = analyticEntries[analyticEntries.length - 1]?.timestamp || null;
+    const silentSeconds = isConnected ? Math.floor(((lastSpeechAt ? now - lastSpeechAt : meetingTime * 1000) / 1000)) : 0;
+    let keywordHits = 0;
+    let agendaHits = 0;
+    let irrelevantHits = 0;
+    let relevantWordCount = 0;
+    let irrelevantStart: number | null = null;
+
+    analyticEntries.forEach(e => {
       const key = e.identity;
       const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
-      existing.words += e.text.split(/\s+/).filter(Boolean).length;
+      const lowerText = e.text.toLowerCase();
+      const words = e.text.split(/\s+/).filter(Boolean).length;
+      const matchedKeywords = monitoredKeywords.filter(term => lowerText.includes(term)).length;
+      const matchedAgenda = agendaTerms.filter(term => lowerText.includes(term)).length;
+      keywordHits += matchedKeywords;
+      agendaHits += matchedAgenda;
+      if (matchedKeywords || matchedAgenda) {
+        relevantWordCount += words;
+        irrelevantStart = null;
+      } else if (words >= 4) {
+        irrelevantHits += 1;
+        irrelevantStart = irrelevantStart ?? e.timestamp;
+      }
+
+      existing.words += words;
       // crude "idea" = utterance >= 6 words
-      if (e.text.split(/\s+/).filter(Boolean).length >= 6) existing.ideas += 1;
+      if (words >= 6) existing.ideas += 1;
       existing.name = e.speaker || existing.name;
       wordsByIdentity.set(key, existing);
     });
@@ -167,9 +226,9 @@ const MeetingAnalysis = () => {
 
     // Pairwise interactions: consecutive speaker A -> B
     const interactionMap = new Map<string, number>();
-    for (let i = 1; i < entries.length; i++) {
-      const from = entries[i - 1].speaker;
-      const to = entries[i].speaker;
+    for (let i = 1; i < analyticEntries.length; i++) {
+      const from = analyticEntries[i - 1].speaker;
+      const to = analyticEntries[i].speaker;
       if (!from || !to || from === to) continue;
       const key = `${from}|${to}`;
       interactionMap.set(key, (interactionMap.get(key) || 0) + 1);
@@ -178,27 +237,49 @@ const MeetingAnalysis = () => {
       const [from, to] = k.split('|');
       return { from, to, weight: Math.min(10, weight) };
     });
+    if (interactions.length === 0 && insights.length > 1) {
+      for (let i = 0; i < insights.length - 1; i++) {
+        interactions.push({ from: insights[i].name, to: insights[i + 1].name, weight: 1 });
+      }
+    }
 
     // Convergence timeline: bucket entries per minute
     const buckets = new Map<number, number>();
-    entries.forEach(e => {
-      const minute = Math.floor((e.timestamp - (entries[0]?.timestamp || e.timestamp)) / 60000);
+    analyticEntries.forEach(e => {
+      const minute = Math.floor((e.timestamp - (analyticEntries[0]?.timestamp || e.timestamp)) / 60000);
       buckets.set(minute, (buckets.get(minute) || 0) + 1);
     });
     const maxBucket = Math.max(1, ...Array.from(buckets.values()));
-    const timeline = Array.from(buckets.entries()).sort((a, b) => a[0] - b[0]).map(([m, c]) => ({
-      minute: m,
-      ideas: Math.round((c / maxBucket) * 100),
-      consensus: Math.min(100, balancePct + m * 2),
-      conflicts: Math.max(0, 30 - m * 3),
-    }));
+    const currentMinute = Math.max(1, Math.floor(meetingTime / 60));
+    const timeline = Array.from({ length: currentMinute + 1 }, (_, m) => {
+      const count = buckets.get(m) || 0;
+      const driftPenalty = irrelevantHits * 4 + (silentSeconds >= 30 ? 25 : 0);
+      return {
+        minute: m,
+        ideas: Math.round((count / maxBucket) * 100),
+        consensus: clamp(Math.round(balancePct + agendaHits * 3 + keywordHits - driftPenalty + m * 2), 0, 100),
+        conflicts: clamp(Math.round(irrelevantHits * 12 + (silentSeconds >= 30 ? 30 : 8) - agendaHits * 2 - keywordHits), 0, 100),
+      };
+    });
 
-    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 25 + Math.min(40, totalWords / 20));
-    const intelligenceScore = Math.min(10, Math.max(1, (balancePct / 12) + (insights.length * 0.8) + Math.min(3, totalWords / 100)));
+    const keywordBoost = Math.min(2.2, keywordHits * 0.45);
+    const agendaBoost = Math.min(1.8, agendaHits * 0.3 + (relevantWordCount / Math.max(totalWords, 1)) * 1.5);
+    const irrelevantPenalty = Math.min(3, irrelevantHits * 0.35);
+    const silencePenalty = silentSeconds >= 30 ? 5 : silentSeconds >= 20 ? 2 : 0;
+    const activityPenalty = participants.filter(p => p.audioMuted && p.videoMuted).length * 0.35;
+    const ideaDiversity = Math.min(100, insights.filter(p => p.ideas > 0).length * 22 + Math.min(28, totalWords / 18) + keywordHits * 4 + agendaHits * 2);
+    const intelligenceScore = clamp((balancePct / 16) + (insights.length * 0.55) + Math.min(2.1, totalWords / 90) + keywordBoost + agendaBoost - irrelevantPenalty - silencePenalty - activityPenalty, 1, 10);
     const noveltyScore = Math.min(100, Math.round(insights.reduce((s, p) => s + p.ideas, 0) * 8));
-    const convergenceScore = Math.min(100, balancePct);
-    const perspectiveRange = Math.min(100, insights.length * 20 + Math.min(20, totalWords / 30));
-    const qualityScore = Math.round((balancePct + ideaDiversity) / 2);
+    const convergenceScore = clamp(Math.round(balancePct + agendaHits * 4 + keywordHits * 2 - irrelevantHits * 6 - (silentSeconds >= 30 ? 35 : 0)), 0, 100);
+    const perspectiveRange = Math.min(100, insights.length * 18 + Math.min(25, totalWords / 25) + insights.filter(p => p.ideas > 0).length * 8);
+    const qualityScore = clamp(Math.round((balancePct + ideaDiversity + convergenceScore) / 3), 0, 100);
+    const scoreReason = silentSeconds >= 30
+      ? 'Meeting silence over 30s caused a major score drop'
+      : keywordHits > 0 || agendaHits > 0
+        ? 'Score increased from monitored keywords and agenda-relevant discussion'
+        : irrelevantHits > 0
+          ? 'Score reduced because recent speech drifted away from the agenda'
+          : 'Score based on live speaking balance and discussion volume';
 
     return {
       participantInsights: insights,
@@ -214,11 +295,51 @@ const MeetingAnalysis = () => {
       silentMembers: silent + participants.filter(p => p.audioMuted).length,
       interactions,
       convergenceTimeline: timeline,
-      avgResponseSeconds: entries.length > 1
-        ? ((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000 / Math.max(1, entries.length - 1)).toFixed(1)
+      keywordHits,
+      agendaHits,
+      irrelevantHits,
+      irrelevantSeconds: irrelevantStart ? Math.floor((now - irrelevantStart) / 1000) : 0,
+      silentSeconds,
+      scoreReason,
+      avgResponseSeconds: analyticEntries.length > 1
+        ? ((analyticEntries[analyticEntries.length - 1].timestamp - analyticEntries[0].timestamp) / 1000 / Math.max(1, analyticEntries.length - 1)).toFixed(1)
         : '0.0',
     };
-  }, [entries, participants]);
+  }, [entries, interim, participants, monitoredKeywords, agendaTerms, isConnected, meetingTime]);
+
+  const localInsights = useMemo<AnalysisData['aiInsights']>(() => {
+    const inactiveNames = participants
+      .filter(p => p.audioMuted && p.videoMuted && p.inactiveSince && Date.now() - p.inactiveSince >= 30000)
+      .map(p => p.name);
+    const insights: AnalysisData['aiInsights'] = [];
+
+    if (entries.length === 0) {
+      insights.push({ text: isConnected ? "Listening for meeting audio and waiting for speech." : "Waiting for participants and audio...", type: "info", priority: 1 });
+    }
+    if (liveStats.keywordHits > 0) {
+      insights.push({ text: `Detected ${liveStats.keywordHits} monitored keyword mention${liveStats.keywordHits === 1 ? '' : 's'} from the customization setup.`, type: "positive", priority: 2 });
+    }
+    if (liveStats.agendaHits > 0) {
+      insights.push({ text: `Discussion is aligning with the meeting agenda (${liveStats.agendaHits} agenda signal${liveStats.agendaHits === 1 ? '' : 's'} detected).`, type: "positive", priority: 2 });
+    }
+    if (liveStats.irrelevantSeconds >= 15) {
+      insights.push({ text: "Conversation shifting, advice to stick to agenda.", type: "warning", priority: 3 });
+    }
+    if (liveStats.silentSeconds >= 30) {
+      insights.push({ text: "The meeting has been silent for over 30 seconds, so the intelligence score dropped sharply.", type: "warning", priority: 3 });
+    }
+    inactiveNames.forEach(name => {
+      insights.push({ text: `${name} has been inactive, they might have something to contribute!`, type: "warning", priority: 3 });
+    });
+    muteWarnings.forEach(w => {
+      insights.push({ text: `${w.name} has been muted for ${Math.floor(w.seconds / 60)}m ${w.seconds % 60}s — they may have something to share.`, type: "warning", priority: 2 });
+    });
+
+    if (insights.length === 0) {
+      insights.push({ text: liveStats.scoreReason, type: "info", priority: 1 });
+    }
+    return insights.sort((a, b) => b.priority - a.priority).slice(0, 6);
+  }, [participants, entries.length, isConnected, liveStats, muteWarnings]);
 
   // AI analysis — supplements live stats with qualitative insights
   const runAnalysis = useCallback(async () => {
@@ -233,6 +354,8 @@ const MeetingAnalysis = () => {
           participants: participantNames,
           organization: org,
           meetingTitle: title,
+          monitoredKeywords,
+          agendaTerms,
           meetingTimeSeconds: meetingTime,
           mutedParticipants: participants.filter(p => p.audioMuted && p.mutedSince).map(p => ({
             name: p.name,
@@ -247,7 +370,9 @@ const MeetingAnalysis = () => {
           type: 'warning',
           priority: 2,
         }));
-        const merged = [...warnings, ...(data.analysis.aiInsights || [])].slice(0, 6);
+        const merged = [...manualInsights, ...localInsights, ...warnings, ...(data.analysis.aiInsights || [])]
+          .sort((a, b) => b.priority - a.priority)
+          .slice(0, 6);
         setAnalysis(prev => ({ ...prev, ...data.analysis, aiInsights: merged }));
       }
     } catch (e) {
@@ -255,7 +380,7 @@ const MeetingAnalysis = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [transcript, participants, org, title, meetingTime, isAnalyzing, muteWarnings]);
+  }, [transcript, participants, org, title, monitoredKeywords, agendaTerms, meetingTime, isAnalyzing, muteWarnings, manualInsights, localInsights]);
 
   // Merge live stats into analysis on every change so visuals always update
   useEffect(() => {
@@ -274,8 +399,56 @@ const MeetingAnalysis = () => {
       silentMembers: liveStats.silentMembers,
       interactions: liveStats.interactions.length > 0 ? liveStats.interactions : prev.interactions,
       convergenceTimeline: liveStats.convergenceTimeline.length > 0 ? liveStats.convergenceTimeline : prev.convergenceTimeline,
+      aiInsights: [...manualInsights, ...localInsights, ...(prev.aiInsights || []).filter(insight => ![...manualInsights, ...localInsights].some(local => local.text === insight.text))]
+        .sort((a, b) => b.priority - a.priority)
+        .slice(0, 6),
     }));
-  }, [liveStats]);
+  }, [liveStats, localInsights, manualInsights]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+    const now = Date.now();
+    if (liveStats.irrelevantSeconds >= 15 && now - irrelevantWarningRef.current > 45000) {
+      irrelevantWarningRef.current = now;
+      const text = "Conversation shifting, advice to stick to agenda.";
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    }
+    if (liveStats.silentSeconds >= 30 && now - silenceWarningRef.current > 45000) {
+      silenceWarningRef.current = now;
+      const text = "The meeting has been silent for over 30 seconds, so the intelligence score dropped sharply.";
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    }
+    participants.forEach(p => {
+      if (!p.audioMuted || !p.videoMuted || !p.inactiveSince) return;
+      if (now - p.inactiveSince < 30000) return;
+      const lastWarn = inactiveWarningRef.current.get(p.identity) || 0;
+      if (now - lastWarn < 90000) return;
+      inactiveWarningRef.current.set(p.identity, now);
+      const text = `${p.name} has been inactive, they might have something to contribute!`;
+      toast.warning(text);
+      setManualInsights(prev => [{ text, type: 'warning', priority: 3 }, ...prev.filter(i => i.text !== text)].slice(0, 6));
+    });
+  }, [isConnected, liveStats.irrelevantSeconds, liveStats.silentSeconds, participants]);
+
+  useEffect(() => {
+    if (!isConnected || meetingTime % 5 !== 0) return;
+    setScoreHistory(prev => {
+      const last = prev[prev.length - 1];
+      const point: ScorePoint = {
+        timestamp: Date.now(),
+        meetingSecond: meetingTime,
+        score: liveStats.intelligenceScore,
+        keywordHits: liveStats.keywordHits,
+        agendaHits: liveStats.agendaHits,
+        irrelevantHits: liveStats.irrelevantHits,
+        reason: liveStats.scoreReason,
+      };
+      if (last && last.meetingSecond === point.meetingSecond) return prev;
+      return [...prev.slice(-119), point];
+    });
+  }, [isConnected, meetingTime, liveStats]);
 
   useEffect(() => {
     if (!isConnected) return;
@@ -315,11 +488,51 @@ const MeetingAnalysis = () => {
   };
 
   const copyShareLink = () => {
-    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}`;
+    const url = `${window.location.origin}/meeting-analysis?room=${encodeURIComponent(roomName)}&org=${encodeURIComponent(org)}&title=${encodeURIComponent(title)}&keywords=${encodeURIComponent(keywordsParam)}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     toast.success("Invite link copied — share it with your team");
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const downloadAnalyticsPdf = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 16;
+
+    const write = (text: string, size = 10, style: 'normal' | 'bold' = 'normal') => {
+      doc.setFont('helvetica', style);
+      doc.setFontSize(size);
+      const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+      lines.forEach((line: string) => {
+        if (y > 282) { doc.addPage(); y = 16; }
+        doc.text(line, margin, y);
+        y += size * 0.42 + 2;
+      });
+    };
+
+    write('TeamIQ Meeting Analytics Summary', 16, 'bold');
+    write(`${title} ${org ? `- ${org}` : ''}`, 11);
+    write(`Duration: ${formatTime(meetingTime)} | Participants: ${participants.map(p => p.name).join(', ') || 'None'}`);
+    write(`Current Intelligence Score: ${analysis.intelligenceScore.toFixed(1)}/10`, 13, 'bold');
+    write(`Participation Balance: ${analysis.participationBalance}% | Idea Diversity: ${analysis.ideaDiversity}% | Consensus: ${analysis.convergenceScore}%`);
+    write(`Keywords monitored: ${monitoredKeywords.join(', ') || 'None entered'}`);
+    write('');
+    write('Score Shifts', 13, 'bold');
+    const history = scoreHistory.length > 0 ? scoreHistory : [{ meetingSecond: meetingTime, score: analysis.intelligenceScore, keywordHits: liveStats.keywordHits, agendaHits: liveStats.agendaHits, irrelevantHits: liveStats.irrelevantHits, reason: liveStats.scoreReason, timestamp: Date.now() }];
+    history.slice(-24).forEach(point => {
+      write(`${formatTime(point.meetingSecond)} - ${point.score.toFixed(1)}/10 | keywords ${point.keywordHits}, agenda ${point.agendaHits}, drift ${point.irrelevantHits} | ${point.reason}`, 9);
+    });
+    write('');
+    write('AI Insights', 13, 'bold');
+    analysis.aiInsights.forEach(insight => write(`${insight.type.toUpperCase()}: ${insight.text}`, 9));
+    write('');
+    write('Participant Summary', 13, 'bold');
+    analysis.participantInsights.forEach(p => write(`${p.name}: ${p.talkTimePercent}% participation, ${p.ideas} ideas`, 9));
+
+    doc.save(`TeamIQ-${title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'meeting'}-analytics.pdf`);
+    toast.success('Analytics PDF downloaded');
   };
 
   const localParticipant = participants.find(p => p.isLocal);
@@ -412,11 +625,23 @@ const MeetingAnalysis = () => {
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             {copied ? 'Copied' : 'Invite'}
           </button>
-          <button onClick={() => setShowAnalytics(!showAnalytics)}
-                  className="text-sm px-3 py-1 rounded transition hidden md:block"
-                  style={{ color: theme.muted, border: `1px solid ${theme.border}` }}>
-            {showAnalytics ? 'Hide' : 'Show'} Analytics
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-sm px-3 py-1 rounded transition flex items-center gap-1"
+                      style={{ color: theme.muted, border: `1px solid ${theme.border}` }}>
+                Analytics <ChevronDown className="w-3 h-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-[80]">
+              <DropdownMenuItem onClick={() => setShowAnalytics(!showAnalytics)} className="gap-2 cursor-pointer">
+                {showAnalytics ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadAnalyticsPdf} className="gap-2 cursor-pointer">
+                <Download className="w-4 h-4" /> Download Analytics
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -434,7 +659,7 @@ const MeetingAnalysis = () => {
                 return (
                   <VideoTile
                     key={p.identity}
-                    participant={lkParticipant as any}
+                    participant={lkParticipant as LocalParticipant | RemoteParticipant}
                     isLocal={p.isLocal}
                     color={PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length]}
                     isSpeaking={p.isSpeaking}
@@ -753,7 +978,7 @@ const InteractionNetwork: React.FC<{
   participants: { name: string; talkTimePercent: number }[];
   interactions: { from: string; to: string; weight: number }[];
   colors: string[];
-  theme: any;
+  theme: typeof THEMES[number];
 }> = ({ participants, interactions, colors, theme }) => {
   const size = 240;
   const cx = size / 2;
@@ -795,7 +1020,7 @@ const InteractionNetwork: React.FC<{
 
 const ConvergenceChart: React.FC<{
   timeline: { minute: number; consensus: number; ideas: number; conflicts: number }[];
-  theme: any;
+  theme: typeof THEMES[number];
 }> = ({ timeline, theme }) => {
   const w = 380;
   const h = 120;
