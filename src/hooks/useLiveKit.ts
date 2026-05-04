@@ -327,7 +327,11 @@ export function useLiveKit({ roomName, identity, displayName, onTranscript, onPa
             if (prev.some(e => e.identity === entry.identity && e.timestamp === entry.timestamp && e.text === entry.text)) return prev;
             return [...prev, entry];
           });
+          setInterim(current => current?.speaker === entry.speaker ? null : current);
           onTranscriptRef.current?.(entry);
+        }
+        if (msg?.type === 'interim-transcript' && msg.text) {
+          setInterim({ speaker: msg.speaker || participant?.name || participant?.identity || 'Speaker', text: msg.text });
         }
       } catch (e) { /* ignore */ }
     };
