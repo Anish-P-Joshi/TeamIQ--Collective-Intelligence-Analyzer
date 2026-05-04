@@ -14,7 +14,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { transcript, participants, organization, meetingTitle, meetingTimeSeconds } = await req.json();
+    const { transcript, participants, organization, meetingTitle, monitoredKeywords = [], agendaTerms = [], meetingTimeSeconds } = await req.json();
 
     if (!transcript || typeof transcript !== 'string') {
       return new Response(JSON.stringify({ error: "transcript is required" }), {
@@ -28,8 +28,11 @@ Organization: ${organization || 'Unknown'}
 Meeting: ${meetingTitle || 'Team Meeting'}
 Participants: ${participants?.join(', ') || 'Unknown'}
 Meeting duration so far: ${Math.floor((meetingTimeSeconds || 0) / 60)} minutes
+Monitored keywords from the setup form: ${Array.isArray(monitoredKeywords) && monitoredKeywords.length ? monitoredKeywords.join(', ') : 'None'}
+Agenda relevance terms: ${Array.isArray(agendaTerms) && agendaTerms.length ? agendaTerms.join(', ') : 'None'}
 
 The transcript is formatted as "SpeakerName: utterance" lines. Use that to attribute talk time and ideas per participant.
+Score the meeting against the monitored keywords and agenda terms. Reward keyword and agenda-aligned discussion. Penalize sustained off-agenda discussion and silence. If the transcript contains off-topic drift, return a warning insight using this exact text when appropriate: "Conversation shifting, advice to stick to agenda.".
 
 You MUST respond with a JSON object using this exact structure (no markdown, no code blocks, just raw JSON):
 {
