@@ -623,11 +623,23 @@ const MeetingAnalysis = () => {
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             {copied ? 'Copied' : 'Invite'}
           </button>
-          <button onClick={() => setShowAnalytics(!showAnalytics)}
-                  className="text-sm px-3 py-1 rounded transition hidden md:block"
-                  style={{ color: theme.muted, border: `1px solid ${theme.border}` }}>
-            {showAnalytics ? 'Hide' : 'Show'} Analytics
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="text-sm px-3 py-1 rounded transition hidden md:flex items-center gap-1"
+                      style={{ color: theme.muted, border: `1px solid ${theme.border}` }}>
+                Analytics <ChevronDown className="w-3 h-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="z-[80]">
+              <DropdownMenuItem onClick={() => setShowAnalytics(!showAnalytics)} className="gap-2 cursor-pointer">
+                {showAnalytics ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadAnalyticsPdf} className="gap-2 cursor-pointer">
+                <Download className="w-4 h-4" /> Download Analytics
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
