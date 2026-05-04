@@ -428,24 +428,21 @@ const MeetingAnalysis = () => {
   }, [isConnected, liveStats.irrelevantSeconds, liveStats.silentSeconds, participants]);
 
   useEffect(() => {
-    if (!isConnected) return;
-    const id = setInterval(() => {
-      setScoreHistory(prev => {
-        const last = prev[prev.length - 1];
-        const point: ScorePoint = {
-          timestamp: Date.now(),
-          meetingSecond: meetingTime,
-          score: liveStats.intelligenceScore,
-          keywordHits: liveStats.keywordHits,
-          agendaHits: liveStats.agendaHits,
-          irrelevantHits: liveStats.irrelevantHits,
-          reason: liveStats.scoreReason,
-        };
-        if (last && last.meetingSecond === point.meetingSecond) return prev;
-        return [...prev.slice(-119), point];
-      });
-    }, 5000);
-    return () => clearInterval(id);
+    if (!isConnected || meetingTime % 5 !== 0) return;
+    setScoreHistory(prev => {
+      const last = prev[prev.length - 1];
+      const point: ScorePoint = {
+        timestamp: Date.now(),
+        meetingSecond: meetingTime,
+        score: liveStats.intelligenceScore,
+        keywordHits: liveStats.keywordHits,
+        agendaHits: liveStats.agendaHits,
+        irrelevantHits: liveStats.irrelevantHits,
+        reason: liveStats.scoreReason,
+      };
+      if (last && last.meetingSecond === point.meetingSecond) return prev;
+      return [...prev.slice(-119), point];
+    });
   }, [isConnected, meetingTime, liveStats]);
 
   useEffect(() => {
