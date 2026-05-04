@@ -135,13 +135,6 @@ const MeetingAnalysis = () => {
   const inactiveWarningRef = useRef<Map<string, number>>(new Map());
   const irrelevantWarningRef = useRef(0);
   const silenceWarningRef = useRef(0);
-  const meetingTimeRef = useRef(0);
-  const localInsightsRef = useRef<AnalysisData['aiInsights']>([]);
-  const manualInsightsRef = useRef<AnalysisData['aiInsights']>([]);
-
-  useEffect(() => { meetingTimeRef.current = meetingTime; }, [meetingTime]);
-  useEffect(() => { localInsightsRef.current = localInsights; }, [localInsights]);
-  useEffect(() => { manualInsightsRef.current = manualInsights; }, [manualInsights]);
 
   // Meeting timer
   useEffect(() => {
