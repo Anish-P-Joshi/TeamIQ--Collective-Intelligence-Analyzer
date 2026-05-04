@@ -180,7 +180,6 @@ const MeetingAnalysis = () => {
     let relevantWordCount = 0;
     let irrelevantStart: number | null = null;
 
-    const hasAnyTerm = (terms: string[], text: string) => terms.some(term => text.includes(term));
     entries.forEach(e => {
       const key = e.identity;
       const existing = wordsByIdentity.get(key) || { name: e.speaker, words: 0, ideas: 0 };
