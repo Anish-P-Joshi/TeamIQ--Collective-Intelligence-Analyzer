@@ -87,6 +87,9 @@ const MeetingAnalysis = () => {
   const title = searchParams.get("title") || "Team Meeting";
   const roomName = searchParams.get("room") || "";
   const initialName = searchParams.get("name") || "";
+  const keywordsParam = searchParams.get("keywords") || "";
+  const monitoredKeywords = useMemo(() => extractTerms(keywordsParam), [keywordsParam]);
+  const agendaTerms = useMemo(() => Array.from(new Set([...extractTerms(title), ...extractTerms(org)])), [title, org]);
 
   const theme = useMemo(() => THEMES[Math.floor(Math.random() * THEMES.length)], []);
 
@@ -120,12 +123,17 @@ const MeetingAnalysis = () => {
   const [hasJoined, setHasJoined] = useState(false);
   const [copied, setCopied] = useState(false);
   const [muteWarnings, setMuteWarnings] = useState<{ name: string; seconds: number; ts: number }[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<ScorePoint[]>([]);
+  const [manualInsights, setManualInsights] = useState<AnalysisData['aiInsights']>([]);
 
   const lastAnalyzedRef = useRef('');
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const analysisIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
   const lastWarningRef = useRef<Map<string, number>>(new Map());
+  const inactiveWarningRef = useRef<Map<string, number>>(new Map());
+  const irrelevantWarningRef = useRef(0);
+  const silenceWarningRef = useRef(0);
 
   // Meeting timer
   useEffect(() => {
