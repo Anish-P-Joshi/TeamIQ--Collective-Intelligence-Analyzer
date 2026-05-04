@@ -292,6 +292,40 @@ const MeetingAnalysis = () => {
     };
   }, [entries, participants, monitoredKeywords, agendaTerms, isConnected, meetingTime]);
 
+  const localInsights = useMemo<AnalysisData['aiInsights']>(() => {
+    const inactiveNames = participants
+      .filter(p => p.audioMuted && p.videoMuted && p.inactiveSince && Date.now() - p.inactiveSince >= 30000)
+      .map(p => p.name);
+    const insights: AnalysisData['aiInsights'] = [];
+
+    if (entries.length === 0) {
+      insights.push({ text: isConnected ? "Listening for meeting audio and waiting for speech." : "Waiting for participants and audio...", type: "info", priority: 1 });
+    }
+    if (liveStats.keywordHits > 0) {
+      insights.push({ text: `Detected ${liveStats.keywordHits} monitored keyword mention${liveStats.keywordHits === 1 ? '' : 's'} from the customization setup.`, type: "positive", priority: 2 });
+    }
+    if (liveStats.agendaHits > 0) {
+      insights.push({ text: `Discussion is aligning with the meeting agenda (${liveStats.agendaHits} agenda signal${liveStats.agendaHits === 1 ? '' : 's'} detected).`, type: "positive", priority: 2 });
+    }
+    if (liveStats.irrelevantSeconds >= 15) {
+      insights.push({ text: "Conversation shifting, advice to stick to agenda.", type: "warning", priority: 3 });
+    }
+    if (liveStats.silentSeconds >= 30) {
+      insights.push({ text: "The meeting has been silent for over 30 seconds, so the intelligence score dropped sharply.", type: "warning", priority: 3 });
+    }
+    inactiveNames.forEach(name => {
+      insights.push({ text: `${name} has been inactive, they might have something to contribute!`, type: "warning", priority: 3 });
+    });
+    muteWarnings.forEach(w => {
+      insights.push({ text: `${w.name} has been muted for ${Math.floor(w.seconds / 60)}m ${w.seconds % 60}s — they may have something to share.`, type: "warning", priority: 2 });
+    });
+
+    if (insights.length === 0) {
+      insights.push({ text: liveStats.scoreReason, type: "info", priority: 1 });
+    }
+    return insights.sort((a, b) => b.priority - a.priority).slice(0, 6);
+  }, [participants, entries.length, isConnected, liveStats, muteWarnings]);
+
   // AI analysis — supplements live stats with qualitative insights
   const runAnalysis = useCallback(async () => {
     if (!transcript || transcript === lastAnalyzedRef.current || isAnalyzing) return;
