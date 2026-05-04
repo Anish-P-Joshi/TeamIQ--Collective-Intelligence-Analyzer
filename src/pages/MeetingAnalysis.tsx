@@ -36,6 +36,16 @@ interface AnalysisData {
   qualityScore?: number;
 }
 
+interface ScorePoint {
+  timestamp: number;
+  meetingSecond: number;
+  score: number;
+  keywordHits: number;
+  agendaHits: number;
+  irrelevantHits: number;
+  reason: string;
+}
+
 const defaultAnalysis: AnalysisData = {
   intelligenceScore: 0, participationBalance: 0, ideaDiversity: 0,
   currentTopics: [], currentSpeaker: "",
@@ -59,6 +69,16 @@ const THEMES = [
 ];
 
 const PARTICIPANT_COLORS = ["hsl(210 90% 60%)", "hsl(150 70% 55%)", "hsl(280 80% 65%)", "hsl(30 90% 60%)", "hsl(190 85% 55%)", "hsl(330 80% 65%)", "hsl(50 90% 60%)", "hsl(170 70% 55%)"];
+
+const STOP_WORDS = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'have', 'will', 'you', 'are', 'was', 'were', 'our', 'your', 'they', 'them', 'about', 'into', 'what', 'when', 'where', 'how', 'why', 'can', 'could', 'should', 'would', 'just', 'like', 'need', 'going', 'meeting', 'team']);
+
+const extractTerms = (value: string) => value
+  .toLowerCase()
+  .split(/[^a-z0-9]+/)
+  .map(term => term.trim())
+  .filter(term => term.length >= 3 && !STOP_WORDS.has(term));
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const MeetingAnalysis = () => {
   const [searchParams] = useSearchParams();
