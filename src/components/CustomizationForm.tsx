@@ -33,6 +33,7 @@ const CustomizationForm = () => {
       title: formData.meetingTitle || 'Team Meeting',
       room,
       name: formData.yourName.trim(),
+      keywords: formData.keywords.trim(),
     });
 
     navigate(`/meeting-analysis?${params.toString()}`);
