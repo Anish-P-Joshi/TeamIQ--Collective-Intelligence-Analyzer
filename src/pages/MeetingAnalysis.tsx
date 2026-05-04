@@ -3,10 +3,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useLiveKit, LKTranscriptEntry } from "@/hooks/useLiveKit";
 import { VideoTile } from "@/components/VideoTile";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { jsPDF } from "jspdf";
 import {
   Mic, MicOff, Video, VideoOff, BarChart3, Brain, TrendingUp, MessageSquare,
-  Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check
+  Lightbulb, ArrowLeft, Activity, Target, Zap, Network, GitMerge, PhoneOff, Copy, Check,
+  Download, ChevronDown, Eye, EyeOff
 } from "lucide-react";
 
 interface AnalysisData {
