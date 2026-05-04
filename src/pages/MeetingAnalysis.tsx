@@ -659,7 +659,7 @@ const MeetingAnalysis = () => {
                 return (
                   <VideoTile
                     key={p.identity}
-                    participant={lkParticipant as any}
+                    participant={lkParticipant as LocalParticipant | RemoteParticipant}
                     isLocal={p.isLocal}
                     color={PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length]}
                     isSpeaking={p.isSpeaking}
@@ -978,7 +978,7 @@ const InteractionNetwork: React.FC<{
   participants: { name: string; talkTimePercent: number }[];
   interactions: { from: string; to: string; weight: number }[];
   colors: string[];
-  theme: any;
+  theme: typeof THEMES[number];
 }> = ({ participants, interactions, colors, theme }) => {
   const size = 240;
   const cx = size / 2;
@@ -1020,7 +1020,7 @@ const InteractionNetwork: React.FC<{
 
 const ConvergenceChart: React.FC<{
   timeline: { minute: number; consensus: number; ideas: number; conflicts: number }[];
-  theme: any;
+  theme: typeof THEMES[number];
 }> = ({ timeline, theme }) => {
   const w = 380;
   const h = 120;
